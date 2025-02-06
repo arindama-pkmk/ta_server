@@ -1,0 +1,74 @@
+# Node modules
+node_modules/
+
+# Environment variables
+.env
+.env.*
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Prisma Client
+prisma/client/
+
+# Database
+*.sqlite
+*.db
+*.db-journal
+
+# Build artifacts
+dist/
+build/
+
+# Static and template files generated dynamically
+src/templates/*.html
+
+# Temporary files
+*.tmp
+*.cache
+*.log
+*.pid
+*.seed
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# IDE specific files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Generated files (by Prisma, etc.)
+prisma/migrations/
+
+# Coverage reports
+coverage/
+.nyc_output/
+
+# Docker
+docker-compose.override.yml
+docker-compose.override.yaml
+*.dockerignore
+.dockerignore
+
+# Package manager lock files for optional environments
+pnpm-lock.yaml
+
+# Lint and formatting
+.eslintcache
+.prettierignore
+.prettiercache
+
+# Temporary user uploads
+uploads/
+
+# Debugging artifacts
+*.bak

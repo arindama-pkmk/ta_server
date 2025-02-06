@@ -1,0 +1,45 @@
+// This is your Prisma schema file, where you define your database models
+
+// Define the database connection (example: PostgreSQL)
+datasource db {
+  provider = "postgresql"  // Change to your database provider (e.g., mysql, sqlite)
+  url      = env("DATABASE_URL")  // Use environment variable for connection URL
+}
+
+generator client {
+  provider = "prisma-client-js"  // Prisma Client generator for TypeScript support
+}
+
+// Define your models (tables) here
+model User {
+  id            String        @id @default(uuid()) // Auto increment ID
+  name          String
+  email         String        @unique
+  password      String
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  transactions  Transaction[]
+}
+
+model OtpVerification {
+  id         String   @id @default(uuid())
+  email      String
+  otp        String
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+}
+
+model Transaction {
+  id          String    @id @default(uuid())
+  about       String
+  amount      Float
+  date        DateTime  @default(now())
+  category    String
+  type        String    // INCOME or EXPENSE
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+

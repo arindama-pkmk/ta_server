@@ -1,0 +1,17 @@
+{
+  "registrationotp": {
+    "subject": "Your Registration OTP Code",
+    "message": "Please use the following OTP to complete your registration: {{otp}}",
+    "color": "#4caf50"
+  },
+  "forgotpassword": {
+    "subject": "Password Reset Request",
+    "message": "Click here to reset your password: {{link}}",
+    "color": "#ff9800"
+  },
+  "others": {
+    "subject": "General Notification",
+    "message": "This is a general notification from our service.",
+    "color": "#333333"
+  }
+}
