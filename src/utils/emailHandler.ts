@@ -10,7 +10,7 @@ import { loadEmailTemplate, getEmailContent } from './emailTemplateLoader';
  *
  * @returns {Promise<void>} A promise that resolves when the email has been sent.
  */
-export const sendEmail = async (recipient: string, category: string) => {
+export const sendEmail = async (recipient: string, category: string): Promise<void> => {
     const { subject, message, color } = getEmailContent(category);
 
     const htmlContent = loadEmailTemplate(subject, message, color);

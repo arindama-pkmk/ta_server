@@ -7,7 +7,7 @@
  *
  * @throws {Error} If the environment variable is not set.
  */
-export const loadEnvironmentVariable = (varName: string) => {
+export const loadEnvironmentVariable = (varName: string): string => {
   const value = process.env[varName];
   if (!value) {
     throw new Error(`Environment variable ${varName} is not set`);

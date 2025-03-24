@@ -22,29 +22,32 @@ export class UserService extends BaseService<User> {
     }
 
     /**
-     * Finds a user by their email address.
+     * Finds a user by an identifier that could be an email, phone, or username.
+     * The function determines the type and queries the database accordingly.
      *
-     * @param {string} email - The email of the user to find.
-     *
-     * @returns {Promise<User | null>} A promise that resolves with the user
-     * object if a user with the specified email is found, or null if no such
-     * user exists.
+     * @param identifier - The email, phone, or username.
+     * @returns A Promise that resolves to the user or null.
      */
-    async findUserByEmail(email: string): Promise<User | null> {
-        const users = await this.repository.findAll();
-        return users.find(user => user.email === email) || null;
+    async findUserByIdentifier(identifier: string): Promise<User | null> {
+        if (identifier.includes('@')) {
+            return this.repository.findFirst({ where: { email: identifier } });
+        }
+
+        if (/^\+?\d{7,15}$/.test(identifier)) {
+            return this.repository.findFirst({ where: { phone: identifier } });
+        }
+
+        return this.repository.findFirst({ where: { username: identifier } });
     }
 
     /**
-     * Checks if a user with the specified email exists in the database.
+     * Checks whether a user exists given an identifier.
      *
-     * @param {string} email - The email of the user to check.
-     *
-     * @returns {Promise<boolean>} A promise that resolves with a boolean indicating
-     * whether a user with the specified email exists or not.
+     * @param identifier - The email, phone, or username.
+     * @returns A Promise that resolves to true if the user exists, false otherwise.
      */
-    async checkEmailExists(email: string): Promise<boolean> {
-        const user = await this.findUserByEmail(email);
+    async checkUserExists(identifier: string): Promise<boolean> {
+        const user = await this.findUserByIdentifier(identifier);
         return !!user;
     }
 
@@ -101,6 +104,6 @@ export class UserService extends BaseService<User> {
      * @returns {string} The generated JWT token.
      */
     generateToken(userId: string, email: string): string {
-        return jwt.sign({ userId, email }, loadEnvironmentVariable('JWT_SECRET'), { expiresIn: '1h' });
+        return jwt.sign({ userId, email }, loadEnvironmentVariable('JWT_SECRET'), { expiresIn: Number(loadEnvironmentVariable('JWT_EXPIRATION_TIME')) });
     }
 }

@@ -3,6 +3,7 @@ export const TYPES = {
     PrismaClient: Symbol.for('PrismaClient'),
     Routes: Symbol.for('Routes'),
     HealthController: Symbol.for('HealthController'),
+    ClassifierController: Symbol.for('ClassifierController'),
     UserRepository: Symbol.for('UserRepository'),
     UserService: Symbol.for('UserService'),
     UserController: Symbol.for('UserController'),

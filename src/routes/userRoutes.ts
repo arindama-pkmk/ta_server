@@ -4,7 +4,7 @@ import { UserController } from '../controllers/userController';
 import { BaseRoutes } from './baseRoutes';
 import { inject, injectable } from 'inversify';
 import { TYPES } from '../utils/types';
-import { validateZod } from '../middleware/validationMiddleware';
+import { validateZod } from '../middlewares/validationMiddleware';
 import { createUserValidationSchema, updateUserValidationSchema } from '../validators/userValidator';
 
 @injectable()
@@ -21,5 +21,8 @@ export class UserRoutes extends BaseRoutes<User> {
             validateZod(createUserValidationSchema),
             validateZod(updateUserValidationSchema),
         ]);
+
+        this.router.post('/login', userController.login.bind(userController));
+        this.router.post('/register', userController.register.bind(userController));
     }
 }

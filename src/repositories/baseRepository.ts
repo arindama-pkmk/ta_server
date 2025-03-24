@@ -48,8 +48,8 @@ export abstract class BaseRepository<T> {
      *
      * @returns {Promise<T[]>} A promise that resolves with an array of all records.
      */
-    async findAll(): Promise<T[]> {
-        return this.model.findMany();
+    async findAll(params?: { where?: any; orderBy?: any; skip?: number; take?: number }): Promise<T[]> {
+        return this.model.findMany(params);
     }
 
     /**

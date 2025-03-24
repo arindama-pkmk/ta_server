@@ -1,4 +1,4 @@
-import app from './app';
+import { App } from './app';
 import { config } from 'dotenv';
 import { connectDatabase } from './config/database';
 import { loadEnvironmentVariable } from './utils/environmentVariableHandler';
@@ -7,7 +7,9 @@ config();
 
 connectDatabase();
 
-const port = loadEnvironmentVariable('PORT') ?? 4000;
+const appInstance = new App();
+const app = appInstance.getApp();
+const port = Number(loadEnvironmentVariable('PORT') ?? 4000);
 
 /**
  * Starts the server and listens for incoming connections.

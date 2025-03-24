@@ -14,6 +14,30 @@ export class HealthController {
     }
 
     /**
+     * Handles the "/status" endpoint and returns the current status of the server as
+     * a simple JSON response.
+     *
+     * @param _req - The request object is not used.
+     * @param res - The response object used to send the status.
+     *
+     * @returns {Promise<void>} - A promise that resolves when the status is sent in
+     *   the response.
+     *
+     * This method attempts to connect to the database using a simple query. If the
+     * query is successful, a JSON response with the status "OK" is sent. If the query
+     * fails, a JSON response with the status "Error" is sent, along with the error
+     * message from the database.
+     */
+    async getStatus(_req: Request, res: Response) {
+        try {
+            await this.prisma.$connect();
+            res.status(200).json({ status: 'OK' });
+        } catch (error) {
+            res.status(500).json({ status: 'Error', message: (error as Error).message });
+        }
+    }
+
+    /**
      * Handles the "/health" endpoint and returns the current health status of the
      * server and its services.
      *

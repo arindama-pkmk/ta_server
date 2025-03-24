@@ -28,8 +28,8 @@ export class BaseService<T> {
      *
      * @returns {Promise<T[]>} A promise that resolves with an array of all records.
      */
-    async findAll(): Promise<T[]> {
-        return this.repository.findAll();
+    async findAll(params?: { where?: any; orderBy?: any; skip?: number; take?: number }): Promise<T[]> {
+        return this.repository.findAll(params);
     }
 
     /**
