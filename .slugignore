@@ -1,4 +1,3 @@
 # Exclude development source files and tests since the build output is in dist/
-src/
 tests/
 */.spec.ts
