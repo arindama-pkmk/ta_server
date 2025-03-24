@@ -62,6 +62,26 @@ export class TransactionController extends BaseController<Transaction> {
   }
 
   /**
+ * GET /transactions/subcategory/:subcategory
+ *
+ * Retrieves transactions filtered by a given subcategory.
+ */
+  async getTransactionsBySubcategory(req: Request, res: Response): Promise<void> {
+    try {
+      const subcategory = req.params['subcategory'];
+      if (!subcategory) {
+        res.status(400).json({ message: 'Subcategory parameters are required.' });
+        return;
+      }
+      const transactionService = this.service as TransactionService;
+      const transactions = await transactionService.getTransactionsBySubcategory(subcategory);
+      res.status(200).json(transactions);
+    } catch (error) {
+      res.status(500).json({ message: (error as Error).message });
+    }
+  }
+
+  /**
    * GET /transactions/summary
    *
    * Retrieves a summary of transactions (e.g., total income, total expense, net amount).

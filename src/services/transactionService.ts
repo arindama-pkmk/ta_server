@@ -49,6 +49,14 @@ export class TransactionService extends BaseService<Transaction> {
         });
     }
 
+    getTransactionsBySubcategory(subcategory: string): Promise<Transaction[]> {
+        return this.repository.findAll({
+            where: {
+                subcategory: subcategory,
+            },
+        });
+    }
+
     /**
      * Retrieves a summary of transactions: total income, total expense, and net total.
      *

@@ -20,5 +20,9 @@ export class TransactionRoutes extends BaseRoutes<Transaction> {
         super(transactionController, [
             validateZod(createTransactionValidationSchema),
         ]);
+
+        this.router.get('/category/:category', transactionController.getTransactionsByCategory.bind(transactionController));
+        this.router.get('/subcategory/:subcategory', transactionController.getTransactionsBySubcategory.bind(transactionController));
+        this.router.get('/date-range', transactionController.getTransactionsByDateRange.bind(transactionController));
     }
 }
