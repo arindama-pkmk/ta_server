@@ -46,9 +46,6 @@ Thumbs.db
 # TypeScript cache
 *.tsbuildinfo
 
-# Generated files (by Prisma, etc.)
-prisma/migrations/
-
 # Coverage reports
 coverage/
 .nyc_output/
