@@ -41,7 +41,7 @@ model Transaction {
   subcategory   String
   type          String    // INCOME or EXPENSE
   // attachment String
-  isBookmarked  Boolean?      @default(false)
+  // isBookmarked  Boolean?      @default(false)
   userId        String?
   user          User?     @relation(fields: [userId], references: [id])
   createdAt     DateTime  @default(now())
