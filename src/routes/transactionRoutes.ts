@@ -9,13 +9,6 @@ import { createTransactionValidationSchema } from '../validators/transactionVali
 
 @injectable()
 export class TransactionRoutes extends BaseRoutes<Transaction> {
-    /**
-     * Initializes a new instance of the TransactionRoutes class with the specified
-     * TransactionController instance.
-     *
-     * @param {TransactionController} transactionController - The TransactionController instance to use
-     *   for handling transaction-related operations.
-     */
     constructor(@inject(TYPES.TransactionController) transactionController: TransactionController) {
         super(transactionController, [
             validateZod(createTransactionValidationSchema),
@@ -24,5 +17,7 @@ export class TransactionRoutes extends BaseRoutes<Transaction> {
         this.router.get('/category/:category', transactionController.getTransactionsByCategory.bind(transactionController));
         this.router.get('/subcategory/:subcategory', transactionController.getTransactionsBySubcategory.bind(transactionController));
         this.router.get('/date-range', transactionController.getTransactionsByDateRange.bind(transactionController));
+        this.router.get('/summary', transactionController.getTransactionSummary.bind(transactionController));
+        this.router.post('/:id/bookmark', transactionController.bookmarkTransaction.bind(transactionController));
     }
 }

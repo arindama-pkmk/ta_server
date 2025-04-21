@@ -1,28 +1,17 @@
 // controllers/transactionController.ts
-import { Request, Response } from 'express';
 import { Transaction } from '@prisma/client';
-import { BaseController } from './baseController';
+import { Request, Response } from 'express';
+import { inject, injectable } from 'inversify';
 import { TransactionService } from '../services/transactionService';
 import { TYPES } from '../utils/types';
-import { inject, injectable } from 'inversify';
+import { BaseController } from './baseController';
 
 @injectable()
 export class TransactionController extends BaseController<Transaction> {
-  /**
-   * Initializes a new instance of the TransactionController class with the specified TransactionService.
-   * @param {TransactionService} transactionService - The TransactionService that will be used for database operations.
-   */
   constructor(@inject(TYPES.TransactionService) transactionService: TransactionService) {
     super(transactionService);
   }
 
-  /**
-   * GET /transactions/date-range?startDate=...&endDate=...
-   *
-   * Retrieves transactions within a specified date range.
-   *
-   * Expects query parameters `startDate` and `endDate` in ISO format.
-   */
   async getTransactionsByDateRange(req: Request, res: Response): Promise<void> {
     try {
       const { startDate, endDate } = req.query;
@@ -41,11 +30,6 @@ export class TransactionController extends BaseController<Transaction> {
     }
   }
 
-  /**
-   * GET /transactions/category/:category
-   *
-   * Retrieves transactions filtered by a given category.
-   */
   async getTransactionsByCategory(req: Request, res: Response): Promise<void> {
     try {
       const category = req.params['category'];
@@ -61,11 +45,6 @@ export class TransactionController extends BaseController<Transaction> {
     }
   }
 
-  /**
- * GET /transactions/subcategory/:subcategory
- *
- * Retrieves transactions filtered by a given subcategory.
- */
   async getTransactionsBySubcategory(req: Request, res: Response): Promise<void> {
     try {
       const subcategory = req.params['subcategory'];
@@ -81,11 +60,6 @@ export class TransactionController extends BaseController<Transaction> {
     }
   }
 
-  /**
-   * GET /transactions/summary
-   *
-   * Retrieves a summary of transactions (e.g., total income, total expense, net amount).
-   */
   async getTransactionSummary(_req: Request, res: Response): Promise<void> {
     try {
       const transactionService = this.service as TransactionService;
@@ -95,5 +69,19 @@ export class TransactionController extends BaseController<Transaction> {
       res.status(500).json({ message: (error as Error).message });
     }
   }
-}
 
+  async bookmarkTransaction(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      if (!id) {
+        res.status(400).json({ message: 'ID parameter is required' });
+        return;
+      }
+      const transactionService = this.service as TransactionService;
+      const updatedTransaction = await transactionService.bookmarkTransaction(id);
+      res.status(200).json(updatedTransaction);
+    } catch (error) {
+      res.status(500).json({ message: (error as Error).message });
+    }
+  }
+}

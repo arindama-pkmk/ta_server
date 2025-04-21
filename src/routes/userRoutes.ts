@@ -9,13 +9,6 @@ import { createUserValidationSchema, updateUserValidationSchema } from '../valid
 
 @injectable()
 export class UserRoutes extends BaseRoutes<User> {
-    /**
-     * Initializes a new instance of the UserRoutes class with the specified
-     * UserController instance.
-     *
-     * @param {UserController} userController - The UserController instance to use
-     *   for handling user-related operations.
-     */
     constructor(@inject(TYPES.UserController) userController: UserController) {
         super(userController, [
             validateZod(createUserValidationSchema),

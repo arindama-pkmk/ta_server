@@ -1,85 +1,163 @@
-import 'reflect-metadata';
-import { Container } from 'inversify';
-import { UserService } from '../../src/services/userService';
-import { UserRepository } from '../../src/repositories/userRepository';
-import { TYPES } from '../../src/utils/types';
 import { User } from '@prisma/client';
+import { Container } from 'inversify';
+import 'reflect-metadata';
 import { v4 as uuidv4, validate as validateUuid } from 'uuid';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 
+import { UserRepository } from '../../src/repositories/userRepository';
+import { UserService } from '../../src/services/userService';
+import { TYPES } from '../../src/utils/types';
+import * as envUtils from '../../src/utils/environmentVariableHandler';
+
+jest.mock('bcryptjs');
+jest.mock('jsonwebtoken');
 jest.mock('../../src/repositories/userRepository');
 
 describe('UserService', () => {
     let userService: UserService;
-    let userRepository: UserRepository;
+    let userRepository: jest.Mocked<UserRepository>;
 
     beforeEach(() => {
         const container = new Container();
-        container.bind<UserRepository>(TYPES.UserRepository).to(UserRepository);
+        userRepository = {
+            create: jest.fn(),
+            findFirst: jest.fn(),
+            findAll: jest.fn(),
+            findById: jest.fn(),
+            update: jest.fn(),
+            delete: jest.fn(),
+        } as Partial<UserRepository> as jest.Mocked<UserRepository>; // Cast to Partial first
+        container.bind<UserRepository>(TYPES.UserRepository).toConstantValue(userRepository);
         container.bind<UserService>(TYPES.UserService).to(UserService);
 
-        userRepository = container.get<UserRepository>(TYPES.UserRepository);
         userService = container.get<UserService>(TYPES.UserService);
+
+        jest.spyOn(envUtils, 'loadEnvironmentVariable').mockImplementation((key: string) => {
+            const envMap: Record<string, string> = {
+                SALT_ROUNDS: '10',
+                JWT_SECRET: 'secret',
+                JWT_EXPIRATION_TIME: '3600'
+            };
+            return envMap[key] ?? '';
+        });
     });
 
-    describe('createUser', () => {
-        it('should create a user', async () => {
+    describe('createVerifiedUser', () => {
+        it('should hash password and create user', async () => {
             const userId = uuidv4();
+            const hashedPassword = 'hashedPassword123';
+            const userData = {
+                email: 'user@example.com',
+                password: 'plainPassword',
+            };
 
-            userRepository.create = jest.fn().mockResolvedValueOnce({
+            (bcrypt.hash as jest.Mock).mockResolvedValueOnce(hashedPassword);
+
+            userRepository.create.mockResolvedValueOnce({
                 id: userId,
-                name: 'Test User',
-                email: 'test@example.com',
-                password: 'password',
+                email: userData.email,
+                password: hashedPassword,
+                name: 'Name',
+                username: 'username',
+                phone: '12345678',
+                occupation: 'Dev',
                 createdAt: new Date(),
                 updatedAt: new Date(),
             });
 
-            const user = await userService.create({
-                id: userId,
-                name: 'Test User',
-                email: 'test@example.com',
-                password: 'password',
-                createdAt: new Date(),
-                updatedAt: new Date(),
-            });
+            const createdUser = await userService.createVerifiedUser(userData);
 
-            expect(userRepository.create).toHaveBeenCalledWith({
-                id: userId,
-                name: 'Test User',
-                email: 'test@example.com',
-                password: 'password',
-                createdAt: expect.any(Date),
-                updatedAt: expect.any(Date),
-            });
+            expect(bcrypt.hash).toHaveBeenCalledWith('plainPassword', '10');
+            expect(userRepository.create).toHaveBeenCalledWith(expect.objectContaining({
+                email: userData.email,
+                password: hashedPassword,
+            }));
+            expect(validateUuid(createdUser.id)).toBe(true);
+        });
 
-            expect(validateUuid(user.id)).toBe(true);
-            expect(user.name).toBe('Test User');
+        it('should throw error if email or password is missing', async () => {
+            await expect(userService.createVerifiedUser({ email: '' }))
+                .rejects.toThrow('Email and password are required');
         });
     });
 
-    describe('findUserByEmail', () => {
-        it('should return a user if a matching email is found', async () => {
-            const mockUsers: User[] = [
-                { id: uuidv4(), name: 'Alice', email: 'alice@example.com', password: 'pass1', createdAt: new Date(), updatedAt: new Date() },
-                { id: uuidv4(), name: 'Bob', email: 'bob@example.com', password: 'pass2', createdAt: new Date(), updatedAt: new Date() },
-            ];
+    describe('findUserByIdentifier', () => {
+        it('should find user by email', async () => {
+            const identifier = 'email@example.com';
+            const mockUser = { id: uuidv4(), email: identifier } as User;
 
-            userRepository.findAll = jest.fn().mockResolvedValueOnce(mockUsers);
+            userRepository.findFirst.mockResolvedValueOnce(mockUser);
+            const result = await userService.findUserByIdentifier(identifier);
 
-            const result = await userService.findUserByEmail('bob@example.com');
-
-            expect(userRepository.findAll).toHaveBeenCalledTimes(1);
-            expect(result).toEqual(mockUsers[1]);
-            expect(validateUuid(result!.id)).toBe(true);
+            expect(userRepository.findFirst).toHaveBeenCalledWith({ where: { email: identifier } });
+            expect(result).toEqual(mockUser);
         });
 
-        it('should return null if no matching email is found', async () => {
-            userRepository.findAll = jest.fn().mockResolvedValueOnce([]);
+        it('should find user by phone', async () => {
+            const identifier = '+6281234567890';
+            const mockUser = { id: uuidv4(), phone: identifier } as User;
 
-            const result = await userService.findUserByEmail('nonexistent@example.com');
+            userRepository.findFirst.mockResolvedValueOnce(mockUser);
+            const result = await userService.findUserByIdentifier(identifier);
 
-            expect(userRepository.findAll).toHaveBeenCalledTimes(1);
-            expect(result).toBeNull();
+            expect(userRepository.findFirst).toHaveBeenCalledWith({ where: { phone: identifier } });
+            expect(result).toEqual(mockUser);
+        });
+
+        it('should find user by username', async () => {
+            const identifier = 'username123';
+            const mockUser = { id: uuidv4(), username: identifier } as User;
+
+            userRepository.findFirst.mockResolvedValueOnce(mockUser);
+            const result = await userService.findUserByIdentifier(identifier);
+
+            expect(userRepository.findFirst).toHaveBeenCalledWith({ where: { username: identifier } });
+            expect(result).toEqual(mockUser);
+        });
+    });
+
+    describe('checkUserExists', () => {
+        it('should return true if user exists', async () => {
+            userService.findUserByIdentifier = jest.fn().mockResolvedValueOnce({ id: uuidv4() } as User);
+            const exists = await userService.checkUserExists('someone@example.com');
+            expect(exists).toBe(true);
+        });
+
+        it('should return false if user does not exist', async () => {
+            userService.findUserByIdentifier = jest.fn().mockResolvedValueOnce(null);
+            const exists = await userService.checkUserExists('someone@example.com');
+            expect(exists).toBe(false);
+        });
+    });
+
+    describe('comparePassword', () => {
+        it('should compare and return true if match', async () => {
+            (bcrypt.compare as jest.Mock).mockResolvedValueOnce(true);
+            const match = await userService.comparePassword('plain', 'hashed');
+            expect(match).toBe(true);
+        });
+
+        it('should compare and return false if no match', async () => {
+            (bcrypt.compare as jest.Mock).mockResolvedValueOnce(false);
+            const match = await userService.comparePassword('plain', 'wrong');
+            expect(match).toBe(false);
+        });
+    });
+
+    describe('generateToken', () => {
+        it('should generate a JWT token', () => {
+            const mockToken = 'jwt_token';
+            (jwt.sign as jest.Mock).mockReturnValueOnce(mockToken);
+
+            const token = userService.generateToken('user123', 'email@example.com');
+
+            expect(jwt.sign).toHaveBeenCalledWith(
+                { userId: 'user123', email: 'email@example.com' },
+                'secret',
+                { expiresIn: 3600 }
+            );
+            expect(token).toBe(mockToken);
         });
     });
 });

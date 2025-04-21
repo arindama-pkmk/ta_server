@@ -1,51 +1,144 @@
-// This is your Prisma schema file, where you define your database models
-
-// Define the database connection (example: PostgreSQL)
+// schema.prisma
 datasource db {
-  provider = "postgresql"  // Change to your database provider (e.g., mysql, sqlite)
-  url      = env("DATABASE_URL")  // Use environment variable for connection URL
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 generator client {
-  provider = "prisma-client-js"  // Prisma Client generator for TypeScript support
+  provider = "prisma-client-js"
 }
 
-// Define your models (tables) here
+/// Enumerations
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+enum EvaluationStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+/// Application Models
 model User {
-  id            String        @id @default(uuid()) // Auto increment ID
-  name          String
-  username      String        @unique
-  email         String        @unique
-  phone         String        @unique
-  password      String
-  occupation    String
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  transactions  Transaction[]
+  id         String   @id @default(uuid())
+  name       String
+  username   String   @unique
+  email      String   @unique
+  phone      String   @unique
+  password   String
+  occupation String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  transactions        Transaction[]
+  otpVerifications    OtpVerification[]
+  categories          Category[]
+  allocationTemplates AllocationTemplate[]
+  allocations         Allocation[]
+  evaluations         Evaluation[]
 }
 
 model OtpVerification {
-  id         String   @id @default(uuid())
-  email      String
-  otp        String
-  createdAt  DateTime @default(now())
-  expiresAt  DateTime
+  id        String   @id @default(uuid())
+  email     String
+  otp       String
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  User      User?    @relation(fields: [userId], references: [id])
+  userId    String?
 }
 
+/// Lookup Table for Categories
+model Category {
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  categoryName    String
+  subcategoryName String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  transactions Transaction[]
+
+  @@unique([userId, categoryName, subcategoryName], name: "uniq_user_category_subcategory")
+}
+
+/// Template Ranges for Budgeting
+model AllocationTemplate {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  job          String
+  categoryName String
+  minLimit     Int
+  maxLimit     Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  allocations Allocation[]
+
+  @@unique([userId, job, categoryName], name: "uniq_user_job_category")
+}
+
+/// User Transactions
 model Transaction {
-  id            String    @id @default(uuid())
-  description   String
-  amount        Float
-  date          DateTime  @default(now())
-  category      String
-  subcategory   String
-  type          String    // INCOME or EXPENSE
-  // attachment String
-  // isBookmarked  Boolean?      @default(false)
-  userId        String?
-  user          User?     @relation(fields: [userId], references: [id])
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id           String          @id @default(uuid())
+  userId       String
+  user         User            @relation(fields: [userId], references: [id])
+  description  String
+  amount       Float
+  date         DateTime        @default(now()) @db.Timestamptz(6)
+  categoryId   String
+  category     Category        @relation(fields: [categoryId], references: [id])
+  type         TransactionType
+  isBookmarked Boolean         @default(false)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  allocations Allocation[]
+  evaluations Evaluation[]
+
+  @@index([userId, date], name: "idx_transaction_user_date")
 }
 
+/// Actual Budget Allocations
+model Allocation {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
 
+  templateId String?
+  template   AllocationTemplate? @relation(fields: [templateId], references: [id])
+
+  transactionId String
+  transaction   Transaction @relation(fields: [transactionId], references: [id])
+
+  month        DateTime // represents the allocation month
+  categoryName String
+  percentage   Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, month, categoryName], name: "uniq_user_month_category")
+  @@index([transactionId], name: "idx_allocation_transaction")
+}
+
+/// One‑off Evaluations per Transaction
+model Evaluation {
+  id                String           @id @default(uuid())
+  transactionId     String
+  transaction       Transaction      @relation(fields: [transactionId], references: [id])
+  description       String
+  date              DateTime         @default(now())
+  status            EvaluationStatus
+  calculationResult Float
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  User              User?            @relation(fields: [userId], references: [id])
+  userId            String?
+
+  @@index([transactionId], name: "idx_evaluation_transaction")
+}

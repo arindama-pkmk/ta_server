@@ -1,9 +1,9 @@
-// services/transactionService.ts
-import { Transaction } from '@prisma/client';
-import { BaseService } from './baseService';
+// src/services/transactionService.ts
+import { Transaction, TransactionType } from '@prisma/client';
+import { inject, injectable } from 'inversify';
 import { TransactionRepository } from '../repositories/transactionRepository';
 import { TYPES } from '../utils/types';
-import { inject, injectable } from 'inversify';
+import { BaseService } from './baseService';
 
 interface TransactionSummary {
     totalIncome: number;
@@ -17,13 +17,6 @@ export class TransactionService extends BaseService<Transaction> {
         super(transactionRepository);
     }
 
-    /**
-     * Retrieves transactions between the given startDate and endDate.
-     *
-     * @param startDate - The start date in ISO format.
-     * @param endDate - The end date in ISO format.
-     * @returns A promise that resolves with an array of transactions.
-     */
     async getTransactionsByDateRange(startDate: string, endDate: string): Promise<Transaction[]> {
         return this.repository.findAll({
             where: {
@@ -35,12 +28,6 @@ export class TransactionService extends BaseService<Transaction> {
         });
     }
 
-    /**
-     * Retrieves transactions by category.
-     *
-     * @param category - The category to filter transactions by.
-     * @returns A promise that resolves with an array of transactions in that category.
-     */
     async getTransactionsByCategory(category: string): Promise<Transaction[]> {
         return this.repository.findAll({
             where: {
@@ -57,20 +44,15 @@ export class TransactionService extends BaseService<Transaction> {
         });
     }
 
-    /**
-     * Retrieves a summary of transactions: total income, total expense, and net total.
-     *
-     * @returns A promise that resolves with the transaction summary.
-     */
     async getTransactionSummary(): Promise<TransactionSummary> {
         const transactions = await this.repository.findAll();
         let totalIncome = 0;
         let totalExpense = 0;
         transactions.forEach((tx) => {
             // Assuming your Transaction model has a "type" field that is a string ('income' or 'expense')
-            if (tx.type === 'income') {
+            if (tx.type.toLowerCase() === TransactionType.INCOME.toLowerCase()) {
                 totalIncome += tx.amount;
-            } else if (tx.type === 'expense') {
+            } else if (tx.type.toLowerCase() === TransactionType.EXPENSE.toLowerCase()) {
                 totalExpense += tx.amount;
             }
         });
@@ -79,5 +61,14 @@ export class TransactionService extends BaseService<Transaction> {
             totalExpense,
             netTotal: totalIncome - totalExpense,
         };
+    }
+
+    async bookmarkTransaction(id: string): Promise<Transaction> {
+        const transaction = await this.repository.findById(id);
+        if (!transaction) throw new Error('Transaction not found');
+
+        return this.repository.update(id, {
+            isBookmarked: !transaction.isBookmarked,
+        });
     }
 }

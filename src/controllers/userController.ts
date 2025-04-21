@@ -7,25 +7,10 @@ import { inject, injectable } from 'inversify';
 
 @injectable()
 export class UserController extends BaseController<User> {
-    /**
-     * Initializes a new instance of the UserController class.
-     *
-     * @param {UserService} userService - The user service to be used for
-     * handling user-related operations.
-     */
     constructor(@inject(TYPES.UserService) userService: UserService) {
         super(userService);
     }
 
-    /**
-     * Handles user login.
-     *
-     * This method receives an email (or identifier) and password from the request body,
-     * validates the user via the userService, and returns a JWT token on success.
-     *
-     * @param req Express request object
-     * @param res Express response object
-     */
     async login(req: Request, res: Response): Promise<void> {
         try {
             const { email, password } = req.body;
@@ -44,16 +29,6 @@ export class UserController extends BaseController<User> {
         }
     }
 
-    /**
-     * Handles user registration.
-     *
-     * This method receives registration data from the request body,
-     * validates that necessary fields are present, creates a new user,
-     * and returns the created user object.
-     *
-     * @param req Express request object
-     * @param res Express response object
-     */
     async register(req: Request, res: Response): Promise<void> {
         try {
             const { name, username, email, phone, password } = req.body;

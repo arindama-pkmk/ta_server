@@ -1,11 +1,11 @@
-// src/repositories/transactionRepository.ts
-import { PrismaClient, Transaction } from '@prisma/client';
+// src/repositories/transactionEvaluationRepository.ts
+import { PrismaClient, Evaluation } from '@prisma/client';
 import { inject, injectable } from 'inversify';
 import { TYPES } from '../utils/types';
 import { BaseRepository } from './baseRepository';
 
 @injectable()
-export class TransactionRepository extends BaseRepository<Transaction> {
+export class TransactionEvaluationRepository extends BaseRepository<Evaluation> {
     constructor(@inject(TYPES.PrismaClient) prisma: PrismaClient) {
         super(prisma, prisma.transaction);
     }
