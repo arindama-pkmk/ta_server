@@ -1,4 +1,4 @@
-// services/baseService.ts
+// src/services/baseService.ts
 import { BaseRepository } from '../repositories/baseRepository';
 
 export class BaseService<T> {

@@ -1,4 +1,4 @@
-// controllers/transactionController.ts
+// src/controllers/transactionController.ts
 import { Transaction } from '@prisma/client';
 import { Request, Response } from 'express';
 import { inject, injectable } from 'inversify';

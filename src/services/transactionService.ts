@@ -1,14 +1,14 @@
 // src/services/transactionService.ts
-import { Transaction, TransactionType } from '@prisma/client';
+import { Prisma, Transaction } from '@prisma/client';
 import { inject, injectable } from 'inversify';
 import { TransactionRepository } from '../repositories/transactionRepository';
 import { TYPES } from '../utils/types';
 import { BaseService } from './baseService';
 
 interface TransactionSummary {
-    totalIncome: number;
-    totalExpense: number;
-    netTotal: number;
+    totalAmount: number;
+    totalByCategory: { [categoryName: string]: number };
+    netTotal: number; // income - expense
 }
 
 @injectable()
@@ -45,27 +45,39 @@ export class TransactionService extends BaseService<Transaction> {
     }
 
     async getTransactionSummary(): Promise<TransactionSummary> {
-        const transactions = await this.repository.findAll();
-        let totalIncome = 0;
-        let totalExpense = 0;
-        transactions.forEach((tx) => {
-            // Assuming your Transaction model has a "type" field that is a string ('income' or 'expense')
-            if (tx.type.toLowerCase() === TransactionType.INCOME.toLowerCase()) {
-                totalIncome += tx.amount;
-            } else if (tx.type.toLowerCase() === TransactionType.EXPENSE.toLowerCase()) {
-                totalExpense += tx.amount;
-            }
-        });
-        return {
-            totalIncome,
-            totalExpense,
-            netTotal: totalIncome - totalExpense,
+        const transactions = await this.repository.findAll<
+            Prisma.TransactionFindManyArgs,
+            Prisma.TransactionGetPayload<{ include: { category: true } }>
+        >({ include: { category: true } });
+
+        const summary: TransactionSummary = {
+            totalAmount: 0,
+            totalByCategory: {},
+            netTotal: 0,
         };
+
+        for (const tx of transactions) {
+            const categoryName = tx.category?.categoryName || 'Uncategorized';
+            const accountType = tx.category?.accountType?.toLowerCase();
+
+            summary.totalAmount += tx.amount;
+            summary.totalByCategory[categoryName] = (summary.totalByCategory[categoryName] || 0) + tx.amount;
+
+            if (accountType === 'income') {
+                summary.netTotal += tx.amount;
+            } else if (accountType === 'expense') {
+                summary.netTotal -= tx.amount;
+            }
+        }
+
+        return summary;
     }
 
     async bookmarkTransaction(id: string): Promise<Transaction> {
         const transaction = await this.repository.findById(id);
-        if (!transaction) throw new Error('Transaction not found');
+        if (!transaction) {
+            throw new Error('Transaction not found');
+        }
 
         return this.repository.update(id, {
             isBookmarked: !transaction.isBookmarked,

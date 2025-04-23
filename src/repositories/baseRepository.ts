@@ -1,4 +1,4 @@
-// repositories/baseRepository.ts
+// src/repositories/baseRepository.ts
 import { PrismaClient } from '@prisma/client';
 
 export abstract class BaseRepository<T> {
@@ -21,12 +21,18 @@ export abstract class BaseRepository<T> {
         return this.model.create({ data });
     }
 
-    async findAll(params?: { where?: any; orderBy?: any; skip?: number; take?: number }): Promise<T[]> {
-        return this.model.findMany(params);
+    async findAll<
+        Args = Record<string, unknown>,
+        Result = T
+    >(args?: Args): Promise<Result[]> {
+        return this.model.findMany(args);
     }
 
-    async findById(id: string): Promise<T | null> {
-        return this.model.findUnique({ where: { id } });
+    async findById<
+        Args = Record<string, unknown>,
+        Result = T
+    >(id: string, args?: Args): Promise<Result | null> {
+        return this.model.findUnique({ where: { id }, ...args });
     }
 
     async findFirst(query: object): Promise<T | null> {

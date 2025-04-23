@@ -9,11 +9,6 @@ generator client {
 }
 
 /// Enumerations
-enum TransactionType {
-  INCOME
-  EXPENSE
-}
-
 enum EvaluationStatus {
   PENDING
   COMPLETED
@@ -34,7 +29,6 @@ model User {
 
   transactions        Transaction[]
   otpVerifications    OtpVerification[]
-  categories          Category[]
   allocationTemplates AllocationTemplate[]
   allocations         Allocation[]
   evaluations         Evaluation[]
@@ -53,8 +47,7 @@ model OtpVerification {
 /// Lookup Table for Categories
 model Category {
   id              String   @id @default(uuid())
-  userId          String
-  user            User     @relation(fields: [userId], references: [id])
+  accountType     String
   categoryName    String
   subcategoryName String
   createdAt       DateTime @default(now())
@@ -62,7 +55,7 @@ model Category {
 
   transactions Transaction[]
 
-  @@unique([userId, categoryName, subcategoryName], name: "uniq_user_category_subcategory")
+  @@unique([accountType, categoryName, subcategoryName], name: "uniq_account_category_subcategory")
 }
 
 /// Template Ranges for Budgeting
@@ -84,18 +77,17 @@ model AllocationTemplate {
 
 /// User Transactions
 model Transaction {
-  id           String          @id @default(uuid())
+  id           String   @id @default(uuid())
   userId       String
-  user         User            @relation(fields: [userId], references: [id])
+  user         User     @relation(fields: [userId], references: [id])
   description  String
   amount       Float
-  date         DateTime        @default(now()) @db.Timestamptz(6)
+  date         DateTime @default(now()) @db.Timestamptz(6)
   categoryId   String
-  category     Category        @relation(fields: [categoryId], references: [id])
-  type         TransactionType
-  isBookmarked Boolean         @default(false)
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
+  category     Category @relation(fields: [categoryId], references: [id])
+  isBookmarked Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   allocations Allocation[]
   evaluations Evaluation[]

@@ -47,6 +47,9 @@
   "license": "ISC",
   "main": "index.js",
   "name": "ta_server",
+  "prisma": {
+    "seed": "ts-node --transpile-only prisma/seedAll.ts"
+  },
   "scripts": {
     "build": "tsc",
     "dev": "npm run start",
@@ -54,7 +57,7 @@
     "generate": "prisma generate",
     "lint": "eslint 'src/**/*.ts' --fix",
     "migrate": "prisma migrate deploy",
-    "migrate:dev": "prisma migrate dev",
+    "migrate:dev": "prisma migrate dev && prisma db seed",
     "migrate:reset": "prisma migrate reset",
     "postinstall": "prisma generate --schema=prisma/schema.prisma && prisma migrate deploy --schema=prisma/schema.prisma",
     "prettier": "prettier --write 'src/**/*.{ts,js,json,md}'",
