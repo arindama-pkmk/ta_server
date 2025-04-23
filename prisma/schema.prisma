@@ -78,8 +78,8 @@ model AllocationTemplate {
 /// User Transactions
 model Transaction {
   id           String   @id @default(uuid())
-  userId       String
-  user         User     @relation(fields: [userId], references: [id])
+  userId       String?
+  user         User?     @relation(fields: [userId], references: [id])
   description  String
   amount       Float
   date         DateTime @default(now()) @db.Timestamptz(6)
