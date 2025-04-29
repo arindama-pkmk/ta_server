@@ -63,9 +63,9 @@ export class TransactionService extends BaseService<Transaction> {
             summary.totalAmount += tx.amount;
             summary.totalByCategory[categoryName] = (summary.totalByCategory[categoryName] || 0) + tx.amount;
 
-            if (accountType === 'income') {
+            if (accountType === 'income' || accountType === 'pemasukan') {
                 summary.netTotal += tx.amount;
-            } else if (accountType === 'expense') {
+            } else if (accountType === 'expense' || accountType === 'pengeluaran') {
                 summary.netTotal -= tx.amount;
             }
         }

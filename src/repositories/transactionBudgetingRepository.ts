@@ -10,29 +10,31 @@ export class TransactionBudgetingRepository extends BaseRepository<Allocation> {
     }
 
     // Override to automatically include related transaction and template
-    override async findAll(params?: {
-        where?: any;
-        orderBy?: any;
-        skip?: number;
-        take?: number;
-    }): Promise<Allocation[]> {
+    override async findAll<
+        Args = Record<string, unknown>,
+        Result = Allocation
+    >(args?: Args): Promise<Result[]> {
         return this.prisma.allocation.findMany({
-            ...params,
+            ...args,
             include: {
                 transaction: true,
                 template: true,
             },
-        });
+        }) as Promise<Result[]>;
     }
 
     // Override to include relations on single fetch
-    override async findById(id: string): Promise<Allocation | null> {
+    override async findById<Args = Record<string, unknown>, Result = Allocation>(
+        id: string,
+        args?: Args
+    ): Promise<Result | null> {
         return this.prisma.allocation.findUnique({
             where: { id },
+            ...args,
             include: {
                 transaction: true,
                 template: true,
             },
-        });
+        }) as Promise<Result | null>;
     }
 }
