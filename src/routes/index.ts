@@ -47,7 +47,7 @@ export class Routes {
             await this.classifierController.classifyTransaction(req, res);
         });
 
-        app.use(`${basePath}/users`, authenticate, this.userRoutes.getRouter());
-        app.use(`${basePath}/transactions`, /*authenticate,*/ this.transactionRoutes.getRouter());
+        app.use(`${basePath}/users`, /*authenticate,*/ this.userRoutes.getRouter());
+        app.use(`${basePath}/transactions`, authenticate, this.transactionRoutes.getRouter());
     }
 }

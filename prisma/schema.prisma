@@ -10,9 +10,8 @@ generator client {
 
 /// Enumerations
 enum EvaluationStatus {
-  PENDING
-  COMPLETED
-  FAILED
+  IDEAL
+  NOT_IDEAL
 }
 
 /// Application Models
@@ -79,7 +78,7 @@ model AllocationTemplate {
 model Transaction {
   id           String   @id @default(uuid())
   userId       String?
-  user         User?     @relation(fields: [userId], references: [id])
+  user         User?    @relation(fields: [userId], references: [id])
   description  String
   amount       Float
   date         DateTime @default(now()) @db.Timestamptz(6)
