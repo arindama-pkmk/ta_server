@@ -17,13 +17,13 @@ export class TransactionEvaluationService extends BaseService<Evaluation> {
      */
     override async create(item: Evaluation): Promise<Evaluation> {
         // 1) create with status PENDING
-        const pending = await super.create({ ...item, status: 'PENDING' });
+        const pending = await super.create({ ...item, status: 'NOT_IDEAL' });
         // 2) perform actual calculation (placeholder)
         const result = this.calculateRatio(item);
         // 3) update with result and status
         return this.repository.update(pending.id, {
             calculationResult: result,
-            status: 'COMPLETED',
+            status: 'IDEAL',
         });
     }
 
