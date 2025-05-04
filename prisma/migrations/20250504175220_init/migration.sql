@@ -1,38 +1,37 @@
-/*
-  Warnings:
-
-  - You are about to drop the column `category` on the `Transaction` table. All the data in the column will be lost.
-  - You are about to drop the column `subcategory` on the `Transaction` table. All the data in the column will be lost.
-  - Added the required column `categoryId` to the `Transaction` table without a default value. This is not possible if the table is not empty.
-  - Changed the type of `type` on the `Transaction` table. No cast exists, the column would be dropped and recreated, which cannot be done if there is data, since the column is required.
-  - Made the column `userId` on table `Transaction` required. This step will fail if there are existing NULL values in that column.
-
-*/
 -- CreateEnum
-CREATE TYPE "TransactionType" AS ENUM ('INCOME', 'EXPENSE');
+CREATE TYPE "EvaluationStatus" AS ENUM ('IDEAL', 'NOT_IDEAL');
 
--- CreateEnum
-CREATE TYPE "EvaluationStatus" AS ENUM ('PENDING', 'COMPLETED', 'FAILED');
+-- CreateTable
+CREATE TABLE "User" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "username" TEXT NOT NULL,
+    "email" TEXT NOT NULL,
+    "phone" TEXT NOT NULL,
+    "password" TEXT NOT NULL,
+    "occupation" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
--- DropForeignKey
-ALTER TABLE "Transaction" DROP CONSTRAINT "Transaction_userId_fkey";
+    CONSTRAINT "User_pkey" PRIMARY KEY ("id")
+);
 
--- AlterTable
-ALTER TABLE "OtpVerification" ADD COLUMN     "userId" TEXT;
+-- CreateTable
+CREATE TABLE "OtpVerification" (
+    "id" TEXT NOT NULL,
+    "email" TEXT NOT NULL,
+    "otp" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+    "userId" TEXT,
 
--- AlterTable
-ALTER TABLE "Transaction" DROP COLUMN "category",
-DROP COLUMN "subcategory",
-ADD COLUMN     "categoryId" TEXT NOT NULL,
-ALTER COLUMN "date" SET DATA TYPE TIMESTAMPTZ(6),
-DROP COLUMN "type",
-ADD COLUMN     "type" "TransactionType" NOT NULL,
-ALTER COLUMN "userId" SET NOT NULL;
+    CONSTRAINT "OtpVerification_pkey" PRIMARY KEY ("id")
+);
 
 -- CreateTable
 CREATE TABLE "Category" (
     "id" TEXT NOT NULL,
-    "userId" TEXT NOT NULL,
+    "accountType" TEXT NOT NULL,
     "categoryName" TEXT NOT NULL,
     "subcategoryName" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -53,6 +52,21 @@ CREATE TABLE "AllocationTemplate" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "AllocationTemplate_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Transaction" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT,
+    "description" TEXT NOT NULL,
+    "amount" DOUBLE PRECISION NOT NULL,
+    "date" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "categoryId" TEXT NOT NULL,
+    "isBookmarked" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Transaction_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -86,10 +100,22 @@ CREATE TABLE "Evaluation" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Category_userId_categoryName_subcategoryName_key" ON "Category"("userId", "categoryName", "subcategoryName");
+CREATE UNIQUE INDEX "User_username_key" ON "User"("username");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "User_phone_key" ON "User"("phone");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Category_accountType_categoryName_subcategoryName_key" ON "Category"("accountType", "categoryName", "subcategoryName");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "AllocationTemplate_userId_job_categoryName_key" ON "AllocationTemplate"("userId", "job", "categoryName");
+
+-- CreateIndex
+CREATE INDEX "idx_transaction_user_date" ON "Transaction"("userId", "date");
 
 -- CreateIndex
 CREATE INDEX "idx_allocation_transaction" ON "Allocation"("transactionId");
@@ -100,20 +126,14 @@ CREATE UNIQUE INDEX "Allocation_userId_month_categoryName_key" ON "Allocation"("
 -- CreateIndex
 CREATE INDEX "idx_evaluation_transaction" ON "Evaluation"("transactionId");
 
--- CreateIndex
-CREATE INDEX "idx_transaction_user_date" ON "Transaction"("userId", "date");
-
 -- AddForeignKey
 ALTER TABLE "OtpVerification" ADD CONSTRAINT "OtpVerification_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "Category" ADD CONSTRAINT "Category_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "AllocationTemplate" ADD CONSTRAINT "AllocationTemplate_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Transaction" ADD CONSTRAINT "Transaction_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Transaction" ADD CONSTRAINT "Transaction_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Transaction" ADD CONSTRAINT "Transaction_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Category"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
