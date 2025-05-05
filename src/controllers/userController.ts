@@ -4,6 +4,7 @@ import { BaseController } from './baseController';
 import { UserService } from '../services/userService';
 import { TYPES } from '../utils/types';
 import { inject, injectable } from 'inversify';
+import { AuthRequest } from 'auth';
 
 @injectable()
 export class UserController extends BaseController<User> {
@@ -43,4 +44,44 @@ export class UserController extends BaseController<User> {
             res.status(500).json({ success: false, message: (error as Error).message });
         }
     }
+
+    async getProfile(req: AuthRequest, res: Response): Promise<void> {
+        try {
+            const userService = this.service as UserService;
+            const userId = req.user?.id;
+
+            if (!userId) {
+                res.status(401).json({ success: false, message: 'Unauthorized' });
+                return;
+            }
+
+            const user = await userService.findById(userId);
+            if (!user) {
+                res.status(404).json({ success: false, message: 'User not found' });
+                return;
+            }
+
+            res.status(200).json({ success: true, user });
+        } catch (error) {
+            res.status(500).json({ success: false, message: (error as Error).message });
+        }
+    }
+
+    async updateProfile(req: AuthRequest, res: Response): Promise<void> {
+        try {
+            const userService = this.service as UserService;
+            const userId = req.user?.id;
+
+            if (!userId) {
+                res.status(401).json({ success: false, message: 'Unauthorized' });
+                return;
+            }
+
+            const updatedUser = await userService.update(userId, req.body);
+            res.status(200).json({ success: true, user: updatedUser });
+        } catch (error) {
+            res.status(500).json({ success: false, message: (error as Error).message });
+        }
+    }
+
 }

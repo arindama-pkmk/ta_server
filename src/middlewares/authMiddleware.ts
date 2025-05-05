@@ -1,4 +1,3 @@
-// src/middlewares/authMiddleware.ts
 import { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { loadEnvironmentVariable } from '../utils/environmentVariableHandler';
@@ -25,7 +24,6 @@ export const authenticate = (req: Request, res: Response, next: NextFunction): v
         (req as any).user = decoded;
         next();
     } catch (error) {
-        console.error('Token verification failed:', error);
         res.status(401).json({ message: 'Unauthorized: Invalid token' });
         return;
     }
