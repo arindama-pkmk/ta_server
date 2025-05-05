@@ -11,25 +11,14 @@ export class TransactionEvaluationService extends BaseService<Evaluation> {
         super(repository);
     }
 
-    /**
-     * Custom creation logic: automatically mark status = PENDING,
-     * compute ratios, then update status to COMPLETED.
-     */
-    override async create(item: Evaluation): Promise<Evaluation> {
-        // 1) create with status PENDING
-        const pending = await super.create({ ...item, status: 'NOT_IDEAL' });
-        // 2) perform actual calculation (placeholder)
-        const result = this.calculateRatio(item);
-        // 3) update with result and status
-        return this.repository.update(pending.id, {
-            calculationResult: result,
-            status: 'IDEAL',
-        });
+    async createHistory(data: Evaluation): Promise<Evaluation> {
+        return this.repository.create(data);
     }
 
-    private calculateRatio(item: Evaluation): number {
-        // Business logic to derive ratio from item.transaction, etc.
-        // Placeholder: return the given calculationResult or 0
-        return item.calculationResult ?? 0;
+    async getHistories(userId: string, start?: Date, end?: Date): Promise<Evaluation[]> {
+        if (start && end) {
+            return (this.repository as TransactionEvaluationRepository).findByDateRange(userId, start, end);
+        }
+        return this.repository.findAll({ where: { userId } });
     }
 }

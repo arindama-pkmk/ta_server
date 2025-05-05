@@ -31,13 +31,13 @@ export class UserController extends BaseController<User> {
 
     async register(req: Request, res: Response): Promise<void> {
         try {
-            const { name, username, email, phone, occupation, password } = req.body;
+            const { name, username, email, address, birthdate, occupation, password } = req.body;
             if (!email || !password) {
                 res.status(400).json({ success: false, message: 'Email and password are required.' });
                 return;
             }
             const userService = this.service as UserService;
-            const newUser = await userService.createVerifiedUser({ name, username, email, phone, occupation, password });
+            const newUser = await userService.createVerifiedUser({ name, username, email, address, birthdate, occupation, password });
             res.status(201).json({ success: true, user: newUser });
         } catch (error) {
             res.status(500).json({ success: false, message: (error as Error).message });

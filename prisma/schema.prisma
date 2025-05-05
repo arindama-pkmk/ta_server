@@ -20,9 +20,10 @@ model User {
   name       String
   username   String   @unique
   email      String   @unique
-  phone      String   @unique
   password   String
+  address    String
   occupation String
+  birthdate  DateTime
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -89,7 +90,6 @@ model Transaction {
   updatedAt    DateTime @updatedAt
 
   allocations Allocation[]
-  evaluations Evaluation[]
 
   @@index([userId, date], name: "idx_transaction_user_date")
 }
@@ -117,19 +117,20 @@ model Allocation {
   @@index([transactionId], name: "idx_allocation_transaction")
 }
 
-/// One‑off Evaluations per Transaction
 model Evaluation {
-  id                String           @id @default(uuid())
-  transactionId     String
-  transaction       Transaction      @relation(fields: [transactionId], references: [id])
-  description       String
-  date              DateTime         @default(now())
-  status            EvaluationStatus
-  calculationResult Float
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
-  User              User?            @relation(fields: [userId], references: [id])
-  userId            String?
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  start        DateTime
+  end          DateTime
+  ideal        Int
+  notIdeal     Int
+  incomplete   Int
+  transactions String[] // Optional: for traceability (e.g. ["txn1", "txn2"])
 
-  @@index([transactionId], name: "idx_evaluation_transaction")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, start, end], name: "idx_evaluation_history_user_start_end") // Prevent duplicates
+  @@index([userId], name: "idx_evaluation_history_user") // Prevent duplicates
 }

@@ -8,21 +8,25 @@ import { HealthController } from '../controllers/healthController';
 import { loadEnvironmentVariable } from '../utils/environmentVariableHandler';
 import { authenticate } from '../middlewares/authMiddleware';
 import { ClassifierController } from '../controllers/classifierController';
+import { TransactionEvaluationRoutes } from './transactionEvaluationRoutes';
 
 @injectable()
 export class Routes {
     private readonly userRoutes: UserRoutes;
     private readonly transactionRoutes: TransactionRoutes;
+    private readonly transactionEvaluationRoutes: TransactionEvaluationRoutes;
     private readonly healthController: HealthController;
     private readonly classifierController: ClassifierController;
 
     constructor(
         @inject(TYPES.UserRoutes) userRoutes: UserRoutes,
         @inject(TYPES.TransactionRoutes) transactionRoutes: TransactionRoutes,
+        @inject(TYPES.TransactionEvaluationRoutes) transactionEvaluationRoutes: TransactionEvaluationRoutes,
         @inject(TYPES.HealthController) healthController: HealthController,
         @inject(TYPES.ClassifierController) classifierController: ClassifierController) {
         this.userRoutes = userRoutes;
         this.transactionRoutes = transactionRoutes;
+        this.transactionEvaluationRoutes = transactionEvaluationRoutes;
         this.healthController = healthController;
         this.classifierController = classifierController;
     }
@@ -47,7 +51,9 @@ export class Routes {
             await this.classifierController.classifyTransaction(req, res);
         });
 
-        app.use(`${basePath}/users`, /*authenticate,*/ this.userRoutes.getRouter());
+        app.use(`${basePath}/transactions/evaluations`, authenticate, this.transactionEvaluationRoutes.getRouter());
+
+        app.use(`${basePath}/users`, this.userRoutes.getRouter());
         app.use(`${basePath}/transactions`, authenticate, this.transactionRoutes.getRouter());
     }
 }

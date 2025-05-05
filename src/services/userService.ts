@@ -19,9 +19,9 @@ export class UserService extends BaseService<User> {
             return this.repository.findFirst({ where: { email: identifier } });
         }
 
-        if (/^\+?\d{7,15}$/.test(identifier)) {
-            return this.repository.findFirst({ where: { phone: identifier } });
-        }
+        // if (/^\+?\d{7,15}$/.test(identifier)) {
+        //     return this.repository.findFirst({ where: { phone: identifier } });
+        // }
 
         return this.repository.findFirst({ where: { username: identifier } });
     }
@@ -47,7 +47,7 @@ export class UserService extends BaseService<User> {
         return this.repository.create({ ...userData, password: hashedPassword } as User);
     }
 
-    generateToken(userId: string, email: string): string {
-        return jwt.sign({ userId, email }, loadEnvironmentVariable('JWT_SECRET'), { expiresIn: Number(loadEnvironmentVariable('JWT_EXPIRATION_TIME')) });
+    generateToken(id: string, email: string): string {
+        return jwt.sign({ id, email }, loadEnvironmentVariable('JWT_SECRET'), { expiresIn: Number(loadEnvironmentVariable('JWT_EXPIRATION_TIME')) });
     }
 }

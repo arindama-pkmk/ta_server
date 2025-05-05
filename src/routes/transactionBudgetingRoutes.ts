@@ -6,7 +6,7 @@ import { TYPES } from '../utils/types';
 import { TransactionBudgetingController } from '../controllers/transactionBudgetingController';
 
 @injectable()
-export class AllocationRoutes extends BaseRoutes<Allocation> {
+export class TransactionBudgetingRoutes extends BaseRoutes<Allocation> {
     constructor(@inject(TYPES.TransactionBudgetingController) allocationController: TransactionBudgetingController) {
         super(allocationController, []);
     }

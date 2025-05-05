@@ -1,10 +1,11 @@
 // src/controllers/evaluationController.ts
-import { Request, Response } from 'express';
+import { Response } from 'express';
 import { BaseController } from './baseController';
 import { Evaluation } from '@prisma/client';
 import { TransactionEvaluationService } from '../services/transactionEvaluationService';
 import { inject, injectable } from 'inversify';
 import { TYPES } from '../utils/types';
+import { AuthRequest } from 'auth';
 
 @injectable()
 export class TransactionEvaluationController extends BaseController<Evaluation> {
@@ -12,21 +13,34 @@ export class TransactionEvaluationController extends BaseController<Evaluation> 
         super(service);
     }
 
-    // You can override findAll to accept date-range query params
-    override async findAll(req: Request, res: Response): Promise<void> {
+    override async findAll(req: AuthRequest, res: Response): Promise<void> {
         try {
+            const userId = req.user.id;
             const { start, end } = req.query;
-            const where: any = {};
-            if (start && end) {
-                where.date = {
-                    gte: new Date(start as string),
-                    lte: new Date(end as string),
-                };
-            }
-            const items = await this.service.findAll({ where });
-            res.json(items);
-        } catch (error) {
-            res.status(400).json({ message: (error as Error).message });
+            const result = await (
+                this.service as TransactionEvaluationService
+            ).getHistories(
+                userId,
+                start ? new Date(start as string) : undefined,
+                end ? new Date(end as string) : undefined
+            );
+            res.json(result);
+        } catch (err) {
+            res.status(400).json({ message: (err as Error).message });
+        }
+    }
+
+    override async create(req: AuthRequest, res: Response): Promise<void> {
+        try {
+            const userId = req.user.id;
+            const data = {
+                ...req.body,
+                userId,
+            };
+            const result = await (this.service as TransactionEvaluationService).createHistory(data);
+            res.status(201).json(result);
+        } catch (err) {
+            res.status(400).json({ message: (err as Error).message });
         }
     }
 }

@@ -10,5 +10,13 @@ export class TransactionEvaluationRepository extends BaseRepository<Evaluation> 
         super(prisma, prisma.transaction);
     }
 
-    // Add Transaction-specific methods if needed
+    async findByDateRange(userId: string, start: Date, end: Date): Promise<Evaluation[]> {
+        return this.prisma.evaluation.findMany({
+            where: {
+                userId,
+                start: { gte: start },
+                end: { lte: end },
+            },
+        });
+    }
 }

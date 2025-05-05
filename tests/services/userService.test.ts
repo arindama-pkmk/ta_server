@@ -60,7 +60,8 @@ describe('UserService', () => {
                 password: hashedPassword,
                 name: 'Name',
                 username: 'username',
-                phone: '12345678',
+                address: 'Bandung',
+                birthdate: new Date(),
                 occupation: 'Dev',
                 createdAt: new Date(),
                 updatedAt: new Date(),
@@ -94,16 +95,16 @@ describe('UserService', () => {
             expect(result).toEqual(mockUser);
         });
 
-        it('should find user by phone', async () => {
-            const identifier = '+6281234567890';
-            const mockUser = { id: uuidv4(), phone: identifier } as User;
+        // it('should find user by phone', async () => {
+        //     const identifier = '+6281234567890';
+        //     const mockUser = { id: uuidv4(), phone: identifier } as User;
 
-            userRepository.findFirst.mockResolvedValueOnce(mockUser);
-            const result = await userService.findUserByIdentifier(identifier);
+        //     userRepository.findFirst.mockResolvedValueOnce(mockUser);
+        //     const result = await userService.findUserByIdentifier(identifier);
 
-            expect(userRepository.findFirst).toHaveBeenCalledWith({ where: { phone: identifier } });
-            expect(result).toEqual(mockUser);
-        });
+        //     expect(userRepository.findFirst).toHaveBeenCalledWith({ where: { phone: identifier } });
+        //     expect(result).toEqual(mockUser);
+        // });
 
         it('should find user by username', async () => {
             const identifier = 'username123';
@@ -153,7 +154,7 @@ describe('UserService', () => {
             const token = userService.generateToken('user123', 'email@example.com');
 
             expect(jwt.sign).toHaveBeenCalledWith(
-                { userId: 'user123', email: 'email@example.com' },
+                { id: 'user123', email: 'email@example.com' },
                 'secret',
                 { expiresIn: 3600 }
             );
