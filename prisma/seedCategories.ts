@@ -99,7 +99,7 @@ async function main() {
     if (!cat) {
       cat = await prisma.category.upsert({
         where: {
-          uniq_account_type_name: {
+          uniq_accountType_name: {
             accountTypeId: at.id,
             name: row.categoryName,
           },

@@ -7,7 +7,6 @@ generator client {
   provider = "prisma-client-js"
 }
 
-/// Enumerations
 enum EvaluationStatus {
   IDEAL
   NOT_IDEAL
@@ -24,24 +23,21 @@ enum AggregationType {
   AVG
 }
 
-/// Master data: Level 0–2
 model AccountType {
-  id         String     @id @default(uuid()) @map("id")
-  name       String     @unique @map("nama")
+  id         String     @id @default(uuid())
+  name       String     @unique
   categories Category[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
-
-  @@map("tipeAkun")
 }
 
 model Category {
-  id                  String               @id @default(uuid()) @map("id")
+  id                  String               @id @default(uuid())
   accountType         AccountType          @relation(fields: [accountTypeId], references: [id], onDelete: Cascade)
-  accountTypeId       String               @map("tipeAkunId")
-  name                String               @map("nama")
+  accountTypeId       String
+  name                String
   subcategories       Subcategory[]
   budgetAllocations   BudgetAllocation[]
   categoryOccupations CategoryOccupation[]
@@ -50,30 +46,28 @@ model Category {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  @@unique([accountTypeId, name], name: "uniq_tipeAkun_nama")
-  @@index([accountTypeId], name: "idx_kategori_tipeAkun")
-  @@map("kategori")
+  @@unique([accountTypeId, name], name: "uniq_accountType_name")
+  @@index([accountTypeId], name: "idx_category_accountType")
 }
 
 model CategoryOccupation {
-  id           String     @id @default(uuid()) @map("id")
+  id           String     @id @default(uuid())
   category     Category   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  categoryId   String     @map("kategoriId")
+  categoryId   String
   occupation   Occupation @relation(fields: [occupationId], references: [id], onDelete: Cascade)
-  occupationId String     @map("pekerjaanId")
-  upperBound   Float?     @map("batasAtas")
-  lowerBound   Float?     @map("batasBawah")
+  occupationId String
+  upperBound   Float?
+  lowerBound   Float?
 
-  @@unique([categoryId, occupationId], name: "uniq_kategori_pekerjaan")
-  @@index([occupationId], name: "idx_katPekerjaan_pekerjaan")
-  @@map("kategoriPekerjaan")
+  @@unique([categoryId, occupationId], name: "uniq_category_occupation")
+  @@index([occupationId], name: "idx_categoryOccupation_occupation")
 }
 
 model Subcategory {
-  id              String           @id @default(uuid()) @map("id")
+  id              String           @id @default(uuid())
   category        Category         @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  categoryId      String           @map("kategoriId")
-  name            String           @map("nama")
+  categoryId      String
+  name            String
   transactions    Transaction[]
   ratioComponents RatioComponent[]
   incomePeriods   IncomePeriod[]
@@ -82,23 +76,20 @@ model Subcategory {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  @@unique([categoryId, name], name: "uniq_kategori_subkategori")
-  @@index([categoryId], name: "idx_subkategori_kategori")
-  @@map("subkategori")
+  @@unique([categoryId, name], name: "uniq_category_subcategory")
+  @@index([categoryId], name: "idx_subcategory_category")
 }
 
-/// Application Models
-
 model User {
-  id           String      @id @default(uuid()) @map("id")
-  name         String      @map("nama")
-  username     String      @unique @map("namaPengguna")
-  email        String      @unique @map("surel")
-  password     String      @map("kataSandi")
-  address      String      @map("alamat")
+  id           String      @id @default(uuid())
+  name         String
+  username     String      @unique
+  email        String      @unique
+  password     String
+  address      String
   occupation   Occupation? @relation(fields: [occupationId], references: [id])
-  occupationId String?     @map("pekerjaanId")
-  birthdate    DateTime    @map("tanggalLahir")
+  occupationId String?
+  birthdate    DateTime
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
   deletedAt    DateTime?
@@ -106,68 +97,60 @@ model User {
   transactions     Transaction[]
   otpVerifications OtpVerification[]
   periods          Period[]
-
-  @@map("pengguna")
 }
 
 model Occupation {
-  id                  String               @id @default(uuid()) @map("id")
-  name                String               @unique @map("nama")
+  id                  String               @id @default(uuid())
+  name                String               @unique
   users               User[]
   categoryOccupations CategoryOccupation[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
-
-  @@map("pekerjaan")
 }
 
 model OtpVerification {
-  id        String    @id @default(uuid()) @map("id")
-  email     String    @map("surel")
-  otp       String    @map("kodeOtp")
+  id        String    @id @default(uuid())
+  email     String
+  otp       String
   createdAt DateTime  @default(now())
-  expiresAt DateTime  @map("berakhirPada")
+  expiresAt DateTime
   deletedAt DateTime?
 
   user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId String? @map("penggunaId")
+  userId String?
 
-  @@index([expiresAt], name: "idx_otp_berakhir")
-  @@map("otpVerifikasi")
+  @@index([expiresAt], name: "idx_otp_expiresAt")
 }
 
-/// Transaction & Periods
-
 model Transaction {
-  id            String      @id @default(uuid()) @map("id")
+  id            String      @id @default(uuid())
   user          User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId        String?     @map("penggunaId")
-  description   String      @map("deskripsi")
-  amount        Float       @map("jumlah")
-  date          DateTime    @default(now()) @map("tanggal") @db.Timestamptz(6)
+  userId        String?
+  description   String
+  amount        Float
+  date          DateTime    @default(now()) @db.Timestamptz(6)
   subcategory   Subcategory @relation(fields: [subcategoryId], references: [id], onDelete: Restrict)
-  subcategoryId String      @map("subkategoriId")
-  isBookmarked  Boolean     @default(false) @map("favorit")
+  subcategoryId String
+  isBookmarked  Boolean     @default(false)
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  @@index([userId, date], name: "idx_transaksi_pengguna_tanggal")
-  @@index([subcategoryId], name: "idx_transaksi_subkategori")
-  @@map("transaksi")
+  @@index([userId, date], name: "idx_transaction_user_date")
+  @@index([subcategoryId], name: "idx_transaction_subcategory")
 }
 
 model Period {
-  id          String   @id @default(uuid()) @map("id")
+  id          String   @id @default(uuid())
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId      String   @map("penggunaId")
-  startDate   DateTime @map("tanggalMulai")
-  endDate     DateTime @map("tanggalSelesai")
-  periodType  String   @default("income") @map("jenisPeriode")
-  description String?  @map("deskripsi")
+  userId      String
+  startDate   DateTime
+  endDate     DateTime
+  periodType  String   @default("income")
+  description String?
 
   incomePeriods     IncomePeriod[]
   budgetAllocations BudgetAllocation[]
@@ -177,94 +160,87 @@ model Period {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  @@unique([userId, startDate, endDate], name: "uniq_pengguna_tanggalPeriode")
-  @@index([userId, periodType], name: "idx_periode_pengguna_jenis")
-  @@map("periode")
+  @@unique([userId, startDate, endDate], name: "uniq_user_period_dates")
+  @@index([userId, periodType], name: "idx_period_user_type")
 }
 
 model IncomePeriod {
-  id            String      @id @default(uuid()) @map("id")
+  id            String      @id @default(uuid())
   period        Period      @relation(fields: [periodId], references: [id], onDelete: Cascade)
-  periodId      String      @map("periodeId")
+  periodId      String
   subcategory   Subcategory @relation(fields: [subcategoryId], references: [id], onDelete: Cascade)
-  subcategoryId String      @map("subkategoriId")
-  amount        Decimal     @map("jumlah")
+  subcategoryId String
+  amount        Decimal
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  @@unique([periodId, subcategoryId], name: "uniq_pendapatanPeriode")
-  @@index([periodId], name: "idx_pendapatan_periode")
-  @@index([subcategoryId], name: "idx_pendapatan_subkategori")
-  @@map("pendapatanPeriode")
+  @@unique([periodId, subcategoryId], name: "uniq_incomePeriod_subcategory")
+  @@index([periodId], name: "idx_incomePeriod_period")
+  @@index([subcategoryId], name: "idx_incomePeriod_subcategory")
 }
 
 model BudgetAllocation {
-  id         String   @id @default(uuid()) @map("id")
+  id         String   @id @default(uuid())
   category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  categoryId String   @map("kategoriId")
+  categoryId String
   period     Period   @relation(fields: [periodId], references: [id], onDelete: Cascade)
-  periodId   String   @map("periodeId")
-  percentage Decimal  @map("persentase")
-  amount     Decimal  @map("jumlah")
+  periodId   String
+  percentage Decimal
+  amount     Decimal
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  @@unique([categoryId, periodId], name: "uniq_katPeriode_alokasi")
-  @@index([periodId], name: "idx_alokasi_periode")
-  @@index([categoryId], name: "idx_alokasi_kategori")
-  @@map("alokasiAnggaran")
+  @@unique([categoryId, periodId], name: "uniq_category_period_allocation")
+  @@index([periodId], name: "idx_budget_period")
+  @@index([categoryId], name: "idx_budget_category")
 }
 
 model Ratio {
-  id              Int                @id @default(autoincrement()) @map("id")
-  code            String             @unique @map("kode")
-  title           String             @map("judul")
-  multiplier      Float              @default(100) @map("pengali")
-  lowerBound      Float?             @map("batasBawah")
-  upperBound      Float?             @map("batasAtas")
+  id              String             @id @default(uuid())
+  code            String             @unique
+  title           String
+  multiplier      Float              @default(100)
+  lowerBound      Float?
+  upperBound      Float?
   ratioComponents RatioComponent[]
   results         EvaluationResult[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  @@map("rasio")
 }
 
 model RatioComponent {
-  id              Int             @id @default(autoincrement()) @map("id")
+  id              String          @id @default(uuid())
   ratio           Ratio           @relation(fields: [ratioId], references: [id], onDelete: Cascade)
-  ratioId         Int             @map("rasioId")
+  ratioId         String
   subcategory     Subcategory     @relation(fields: [subcategoryId], references: [id], onDelete: Cascade)
-  subcategoryId   String          @map("subkategoriId")
-  side            Side            @map("sisi")
-  sign            Int             @map("tanda")
-  aggregationType AggregationType @map("jenisAgregasi")
+  subcategoryId   String
+  side            Side
+  sign            Int
+  aggregationType AggregationType
 
-  @@unique([ratioId, subcategoryId], name: "uniq_rasio_subkategori")
-  @@index([ratioId], name: "idx_komponen_rasio_rasio")
-  @@index([subcategoryId], name: "idx_komponen_rasio_subkategori")
-  @@map("komponenRasio")
+  @@unique([ratioId, subcategoryId], name: "uniq_ratio_subcategory")
+  @@index([ratioId], name: "idx_ratioComponent_ratio")
+  @@index([subcategoryId], name: "idx_ratioComponent_subcategory")
 }
 
 model EvaluationResult {
-  id           Int      @id @default(autoincrement()) @map("id")
+  id           String   @id @default(uuid())
   ratio        Ratio    @relation(fields: [ratioId], references: [id], onDelete: Cascade)
-  ratioId      Int      @map("rasioId")
+  ratioId      String
   period       Period   @relation(fields: [periodId], references: [id], onDelete: Cascade)
-  periodId     String   @map("periodeId")
-  value        Float    @map("nilai")
-  calculatedAt DateTime @default(now()) @map("dihitungPada")
+  periodId     String
+  value        Float
+  calculatedAt DateTime @default(now())
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  @@unique([ratioId, periodId], name: "uniq_hasil_rasio_periode")
-  @@index([periodId], name: "idx_hasil_periode")
-  @@map("hasilEvaluasi")
+  @@unique([ratioId, periodId], name: "uniq_result_ratio_period")
+  @@index([periodId], name: "idx_result_period")
 }
