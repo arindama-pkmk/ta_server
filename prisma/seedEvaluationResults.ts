@@ -1,5 +1,5 @@
 // prisma/seedEvaluationResults.ts
-import { PrismaClient, User, Period, Ratio, RatioComponent, Subcategory, Side, AggregationType, EvaluationResult } from "@prisma/client";
+import { PrismaClient, Ratio, RatioComponent, Subcategory, Side } from "@prisma/client";
 import { startOfDay, endOfDay } from 'date-fns'; // For precise date comparisons
 
 const prisma = new PrismaClient();
@@ -17,26 +17,26 @@ interface PopulatedRatio extends Ratio {
 
 // This is a simplified version of your Flutter _TxSums and _computeSums
 // Adapted for the seed environment.
-class TxSums {
-    sums: Record<string, number> = {}; // Store sums for different conceptual groups
+// class TxSums {
+//     sums: Record<string, number> = {}; // Store sums for different conceptual groups
 
-    constructor(
-        transactions: TransactionData[],
-        ratioComponents: (RatioComponent & { subcategory: Subcategory })[]
-    ) {
-        const subcategoryMap = new Map<string, string>(); // subcategoryId -> subcategoryName
-        ratioComponents.forEach(rc => {
-            if (rc.subcategory) { // Ensure subcategory is populated
-                subcategoryMap.set(rc.subcategory.id, rc.subcategory.name);
-            }
-        });
+//     constructor(
+//         transactions: TransactionData[],
+//         ratioComponents: (RatioComponent & { subcategory: Subcategory })[]
+//     ) {
+//         const subcategoryMap = new Map<string, string>(); // subcategoryId -> subcategoryName
+//         ratioComponents.forEach(rc => {
+//             if (rc.subcategory) { // Ensure subcategory is populated
+//                 subcategoryMap.set(rc.subcategory.id, rc.subcategory.name);
+//             }
+//         });
 
-        // Initialize conceptual sums based on unique subcategories involved in ANY ratio
-        // For simplicity, we'll directly sum for numerator/denominator components later.
-        // This TxSums could be made more generic if many ratios shared intermediate sums like "Total Liquid Assets"
-        // but for direct calculation per ratio, it's simpler to process components directly.
-    }
-}
+//         // Initialize conceptual sums based on unique subcategories involved in ANY ratio
+//         // For simplicity, we'll directly sum for numerator/denominator components later.
+//         // This TxSums could be made more generic if many ratios shared intermediate sums like "Total Liquid Assets"
+//         // but for direct calculation per ratio, it's simpler to process components directly.
+//     }
+// }
 
 function calculateRatioValue(
     transactions: TransactionData[],

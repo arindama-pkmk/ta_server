@@ -1,5 +1,5 @@
 // prisma/seedRatiosAndComponents.ts
-import { PrismaClient, Ratio, Subcategory, Side, AggregationType } from "@prisma/client";
+import { PrismaClient, Side, AggregationType } from "@prisma/client";
 const prisma = new PrismaClient();
 
 // Definitions from your Flutter code
@@ -194,7 +194,7 @@ async function main() {
           uniq_ratio_subcategory_side: { // Use the correct unique constraint name
             ratioId: ratio.id,
             subcategoryId: subcategoryId,
-            side: compDef.side, 
+            side: compDef.side,
             // If side is part of the unique key, include it.
             // My schema has @@unique([ratioId, subcategoryId])
             // This implies a subcategory can only be on one side for a ratio,
@@ -218,7 +218,7 @@ async function main() {
           aggregationType: compDef.aggregationType,
         },
       });
-        console.log(`  Upserted RatioComponent for ${compDef.subcategoryName} (Side: ${compDef.side}, Sign: ${compDef.sign})`);
+      console.log(`  Upserted RatioComponent for ${compDef.subcategoryName} (Side: ${compDef.side}, Sign: ${compDef.sign})`);
     }
   }
 

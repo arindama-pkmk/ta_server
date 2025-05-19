@@ -1,5 +1,5 @@
 // prisma/seedCategoryOccupations.ts
-import { PrismaClient, Category, Occupation } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 // Based on "Tabel II. 2 Alokasi Dana Berdasarkan Situasi Kehidupan"

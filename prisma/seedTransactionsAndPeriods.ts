@@ -1,6 +1,6 @@
 // prisma/seedTransactionsAndPeriods.ts
-import { PrismaClient, User, Subcategory } from '@prisma/client';
-import { subDays, subMonths, addMilliseconds, startOfDay, endOfDay } from 'date-fns';
+import { PrismaClient, User } from '@prisma/client';
+import { subDays, subMonths, startOfDay } from 'date-fns';
 
 const prisma = new PrismaClient();
 
