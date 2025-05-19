@@ -12,6 +12,7 @@ import { TransactionService } from '../services/transactionService';
 import { TransactionController } from '../controllers/transactionController';
 import { TransactionRoutes } from '../routes/transactionRoutes';
 import { ClassifierController } from '../controllers/classifierController';
+import { ClassifierService } from '../services/classifierService';
 import { OtpVerificationRepository } from '../repositories/otpVerificationRepository';
 import { OtpVerificationService } from '../services/otpVerificationService';
 import { OtpVerificationController } from '../controllers/otpVerificationController';
@@ -23,6 +24,10 @@ import { TransactionBudgetingRepository } from '../repositories/transactionBudge
 import { TransactionBudgetingService } from '../services/transactionBudgetingService';
 import { TransactionBudgetingController } from '../controllers/transactionBudgetingController';
 import { TransactionBudgetingRoutes } from '../routes/transactionBudgetingRoutes';
+import { PeriodRepository } from '../repositories/periodRepository'; // Add this
+import { PeriodService } from '../services/periodService';       // Add this
+import { PeriodController } from '../controllers/periodController'; // Add this
+import { PeriodRoutes } from '../routes/periodRoutes';       // Add this
 
 const container = new Container();
 
@@ -53,6 +58,12 @@ container.bind<OtpVerificationService>(TYPES.OtpVerificationService).to(OtpVerif
 container.bind<OtpVerificationController>(TYPES.OtpVerificationController).to(OtpVerificationController);
 
 container.bind<ClassifierController>(TYPES.ClassifierController).to(ClassifierController);
+container.bind<ClassifierService>(TYPES.ClassifierService).to(ClassifierService);
+
+container.bind<PeriodRepository>(TYPES.PeriodRepository).to(PeriodRepository); // Add this
+container.bind<PeriodService>(TYPES.PeriodService).to(PeriodService);       // Add this
+container.bind<PeriodController>(TYPES.PeriodController).to(PeriodController); // Add this
+container.bind<PeriodRoutes>(TYPES.PeriodRoutes).to(PeriodRoutes);       // Add this
 
 container.bind<HealthController>(TYPES.HealthController).to(HealthController);
 

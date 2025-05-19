@@ -4,6 +4,7 @@ export const TYPES = {
     Routes: Symbol.for('Routes'),
     HealthController: Symbol.for('HealthController'),
     ClassifierController: Symbol.for('ClassifierController'),
+    ClassifierService: Symbol.for('ClassifierService'),
     UserRepository: Symbol.for('UserRepository'),
     UserService: Symbol.for('UserService'),
     UserController: Symbol.for('UserController'),
@@ -24,4 +25,8 @@ export const TYPES = {
     OtpVerificationService: Symbol.for('OtpVerificationService'),
     OtpVerificationController: Symbol.for('OtpVerificationController'),
     OtpVerificationRoutes: Symbol.for('OtpVerificationRoutes'),
+    PeriodRepository: Symbol.for('PeriodRepository'),
+    PeriodService: Symbol.for('PeriodService'),
+    PeriodController: Symbol.for('PeriodController'), // If you add a controller
+    PeriodRoutes: Symbol.for('PeriodRoutes'),       // If you add routes
 };

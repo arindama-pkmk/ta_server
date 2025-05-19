@@ -31,7 +31,6 @@
   },
   "description": "",
   "devDependencies": {
-    "@types/axios": "^0.9.36",
     "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.17",
     "@types/date-fns": "^2.5.3",

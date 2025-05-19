@@ -64,13 +64,14 @@ model CategoryOccupation {
 }
 
 model Subcategory {
-  id              String           @id @default(uuid())
-  category        Category         @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  categoryId      String
-  name            String
-  transactions    Transaction[]
-  ratioComponents RatioComponent[]
-  incomePeriods   IncomePeriod[]
+  id               String             @id @default(uuid())
+  category         Category           @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  categoryId       String
+  name             String
+  transactions     Transaction[]
+  ratioComponents  RatioComponent[]
+  incomePeriods    IncomePeriod[]
+  BudgetAllocation BudgetAllocation[]
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -97,6 +98,7 @@ model User {
   transactions     Transaction[]
   otpVerifications OtpVerification[]
   periods          Period[]
+  evaluationResults EvaluationResult[]
 }
 
 model Occupation {
@@ -160,7 +162,7 @@ model Period {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  @@unique([userId, startDate, endDate], name: "uniq_user_period_dates")
+  @@unique([userId, startDate, endDate, periodType], name: "uniq_user_period_dates_type")
   @@index([userId, periodType], name: "idx_period_user_type")
 }
 
@@ -182,21 +184,24 @@ model IncomePeriod {
 }
 
 model BudgetAllocation {
-  id         String   @id @default(uuid())
-  category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  categoryId String
-  period     Period   @relation(fields: [periodId], references: [id], onDelete: Cascade)
-  periodId   String
-  percentage Decimal
-  amount     Decimal
+  id            String      @id @default(uuid())
+  category      Category    @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  categoryId    String
+  subcategory   Subcategory @relation(fields: [subcategoryId], references: [id], onDelete: Restrict)
+  subcategoryId String
+  period        Period      @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  periodId      String
+  percentage    Decimal
+  amount        Decimal
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
-  @@unique([categoryId, periodId], name: "uniq_category_period_allocation")
+  @@unique([categoryId, periodId, subcategoryId], name: "uniq_category_subcategory_period_allocation")
   @@index([periodId], name: "idx_budget_period")
   @@index([categoryId], name: "idx_budget_category")
+  @@index([subcategoryId], name: "idx_budget_subcategory")
 }
 
 model Ratio {
@@ -205,7 +210,9 @@ model Ratio {
   title           String
   multiplier      Float              @default(100)
   lowerBound      Float?
+  isLowerBoundInclusive Boolean? @default(true) // Default to inclusive
   upperBound      Float?
+  isUpperBoundInclusive Boolean? @default(true) // Default to inclusive
   ratioComponents RatioComponent[]
   results         EvaluationResult[]
 
@@ -223,7 +230,7 @@ model RatioComponent {
   sign            Int
   aggregationType AggregationType
 
-  @@unique([ratioId, subcategoryId], name: "uniq_ratio_subcategory")
+  @@unique([ratioId, subcategoryId, side], name: "uniq_ratio_subcategory_side")
   @@index([ratioId], name: "idx_ratioComponent_ratio")
   @@index([subcategoryId], name: "idx_ratioComponent_subcategory")
 }
@@ -235,7 +242,10 @@ model EvaluationResult {
   period       Period   @relation(fields: [periodId], references: [id], onDelete: Cascade)
   periodId     String
   value        Float
+  status       EvaluationStatus // <<< ADD THIS FIELD
   calculatedAt DateTime @default(now())
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId       String           // <<< ADD THIS FIELD (direct link to User)
 
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
@@ -243,4 +253,5 @@ model EvaluationResult {
 
   @@unique([ratioId, periodId], name: "uniq_result_ratio_period")
   @@index([periodId], name: "idx_result_period")
+  @@index([userId]) // Add index for userId
 }

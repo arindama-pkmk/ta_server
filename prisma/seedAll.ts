@@ -1,32 +1,44 @@
 // prisma/seedAll.ts
 import { PrismaClient } from '@prisma/client';
-import { readdirSync } from 'node:fs';
-import { basename, join } from 'node:path';
+import { execSync } from 'node:child_process';
+import { join } from 'node:path';
 
 const prisma = new PrismaClient();
 
+// Define the order of seed scripts
+const seedScriptsInOrder = [
+    'seedOccupations.ts',
+    'seedCategoriesAndSubcategories.ts',
+    'seedUsers.ts',
+    'seedCategoryOccupations.ts',
+    'seedRatiosAndComponents.ts',
+    'seedTransactionsAndPeriods.ts',
+    'seedEvaluationResults.ts',
+];
+
 async function main() {
-    const seedDir = __dirname;
-    const me = basename(__filename); // e.g. 'seedAll.ts'
+    console.log('Starting all seed scripts...');
 
-    const seedFiles = readdirSync(seedDir)
-        // only files starting with 'seed' and ending in .ts/.js
-        .filter(f => /^seed.*\.(ts|js)$/.test(f))
-        // but skip the master script itself
-        .filter(f => f !== me);
-
-    for (const file of seedFiles) {
-        console.log(`▶ running seed script ${file}`);
-        await import(join(seedDir, file));
+    for (const scriptFile of seedScriptsInOrder) {
+        console.log(`\n▶ Running seed script: ${scriptFile}`);
+        try {
+            const scriptPath = join(__dirname, scriptFile);
+            execSync(`npx ts-node ${scriptPath}`, { stdio: 'inherit' });
+            console.log(`✅ Successfully finished seed script: ${scriptFile}`);
+        } catch (error) {
+            console.error(`❌ Error running seed script ${scriptFile}:`); // Removed error object logging for brevity
+            console.error('Stopping further seeding due to error.');
+            process.exit(1);
+        }
     }
 }
 
 main()
     .catch(e => {
-        console.error(e);
+        console.error('Overall seeding process encountered an error:', e);
         process.exit(1);
     })
     .finally(async () => {
-        console.log('✅ All seed scripts completed');
+        console.log('\n✅ All seed scripts process completed.');
         await prisma.$disconnect();
     });
