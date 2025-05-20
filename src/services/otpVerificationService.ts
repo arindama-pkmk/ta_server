@@ -35,15 +35,8 @@ export class OtpVerificationService {
         await this.otpRepository.create(createData);
 
         const emailCategory = 'registrationotp'; // Or determine based on context (e.g., 'forgotpasswordotp')
-        const emailTemplateContent = getEmailContent(emailCategory);
 
-        const messageWithOtp = emailTemplateContent.message.replace('{{otp}}', otp);
-
-        // Assuming sendEmail can take dynamic subject and message from template content
-        await sendEmail(
-            email,
-            messageWithOtp // Pass the message with OTP as the second argument
-        );
+        await sendEmail(email, emailCategory, { otp: otp });
     }
 
     async verifyOtp(email: string, otp: string): Promise<boolean> {

@@ -18,7 +18,6 @@ export const periodSchema = z.object({
     path: ["endDate"], // Point error to endDate field
 });
 
-
 // For PSPEC 3.3: Client sends selected income subcategories to calculate total budgetable income
 export const calculateBudgetableIncomeSchema = z.object({
     periodId: z.string().uuid("Valid period ID is required"),

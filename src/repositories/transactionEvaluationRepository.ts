@@ -59,14 +59,11 @@ export class TransactionEvaluationRepository {
 
     // To find an existing result for a specific user, ratio, and period (for upserting)
     async findExisting(userId: string, periodId: string, ratioId: string): Promise<EvaluationResult | null> {
-        return this.prisma.evaluationResult.findUnique({
+        return this.prisma.evaluationResult.findFirst({ // Changed from findUnique
             where: {
-                uniq_result_ratio_period: { // Using your defined unique constraint
-                    ratioId: ratioId,
-                    periodId: periodId,
-                },
-                // AND ensure it's for the correct user and not soft-deleted
-                userId: userId,
+                ratioId: ratioId,
+                periodId: periodId,
+                userId: userId, // Now this is fine with findFirst
                 deletedAt: null,
             }
         });

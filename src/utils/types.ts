@@ -29,4 +29,9 @@ export const TYPES = {
     PeriodService: Symbol.for('PeriodService'),
     PeriodController: Symbol.for('PeriodController'), // If you add a controller
     PeriodRoutes: Symbol.for('PeriodRoutes'),       // If you add routes
+    CategoryHierarchyRepository: Symbol.for('CategoryHierarchyRepository'),
+    CategoryHierarchyService: Symbol.for('CategoryHierarchyService'),
+    CategoryHierarchyController: Symbol.for('CategoryHierarchyController'),
+    CategoryHierarchyRoutes: Symbol.for('CategoryHierarchyRoutes'),
+
 };

@@ -35,9 +35,8 @@ export class UserService {
 
     generateToken(userId: string, email: string): string {
         const secret = loadEnvironmentVariable('JWT_SECRET');
-        // JWT_EXPIRATION_TIME should be a string like "1d", "7h", or a number of seconds
-        const expiresIn = Number(loadEnvironmentVariable('JWT_EXPIRATION_TIME'));
-
+        const expiresInRaw = loadEnvironmentVariable('JWT_EXPIRATION_TIME');
+        const expiresIn = parseInt(expiresInRaw, 10) || 3600; // default to 1 hour if cannot parse
         return jwt.sign({ id: userId, email: email }, secret, { expiresIn });
     }
 
