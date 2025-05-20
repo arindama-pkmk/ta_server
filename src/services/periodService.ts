@@ -41,10 +41,10 @@ export class PeriodService {
         this.validatePeriodDatesLogic(createDto.startDate, createDto.endDate, createDto.periodType);
 
         // PSPEC: Check for existing identical period for the same user (uniq_user_period_dates_type)
-        const existing = await this.periodRepository.findExisting(userId, createDto.startDate, createDto.endDate, createDto.periodType);
-        if (existing) {
-            throw new BadRequestError(`A period with these exact dates and type already exists for this user (ID: ${existing.id}).`); // Or 409 Conflict
-        }
+        // const existing = await this.periodRepository.findExisting(userId, createDto.startDate, createDto.endDate, createDto.periodType);
+        // if (existing) {
+        //     throw new BadRequestError(`A period with these exact dates and type already exists for this user (ID: ${existing.id}).`); // Or 409 Conflict
+        // }
 
         logger.info(`[PeriodService] Creating new period for user ${userId}, type ${createDto.periodType}`);
         return this.periodRepository.create(createDto, userId);

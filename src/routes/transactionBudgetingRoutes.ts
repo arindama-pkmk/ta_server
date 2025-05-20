@@ -30,7 +30,7 @@ export class TransactionBudgetingRoutes {
 
         /**
          * @openapi
-         * /transaction-budgeting/income-summary/{periodId}:
+         * /budgeting/income-summary/{periodId}:
          *   get:
          *     tags:
          *       - Budgeting
@@ -69,7 +69,7 @@ export class TransactionBudgetingRoutes {
 
         /**
          * @openapi
-         * /transaction-budgeting/expense-category-suggestions:
+         * /budgeting/expense-category-suggestions:
          *   get:
          *     tags:
          *       - Budgeting
@@ -96,7 +96,7 @@ export class TransactionBudgetingRoutes {
 
         /**
          * @openapi
-         * /transaction-budgeting/expense-allocations:
+         * /budgeting/expense-allocations:
          *   post:
          *     tags:
          *       - Budgeting
@@ -137,7 +137,7 @@ export class TransactionBudgetingRoutes {
         // CRUD for individual BudgetAllocation records
         /**
          * @openapi
-         * /transaction-budgeting:
+         * /budgeting:
          *   post:
          *     tags:
          *       - Budgeting Allocations (CRUD)
@@ -176,7 +176,7 @@ export class TransactionBudgetingRoutes {
 
         /**
          * @openapi
-         * /transaction-budgeting:
+         * /budgeting:
          *   get:
          *     tags:
          *       - Budgeting Allocations (CRUD)
@@ -215,7 +215,7 @@ export class TransactionBudgetingRoutes {
 
         /**
          * @openapi
-         * /transaction-budgeting/{allocationId}:
+         * /budgeting/{allocationId}:
          *   get:
          *     tags:
          *       - Budgeting Allocations (CRUD)
@@ -250,7 +250,7 @@ export class TransactionBudgetingRoutes {
 
         /**
          * @openapi
-         * /transaction-budgeting/{allocationId}:
+         * /budgeting/{allocationId}:
          *   put:
          *     tags:
          *       - Budgeting Allocations (CRUD)
@@ -292,7 +292,7 @@ export class TransactionBudgetingRoutes {
 
         /**
          * @openapi
-         * /transaction-budgeting/{allocationId}:
+         * /budgeting/{allocationId}:
          *   delete:
          *     tags:
          *       - Budgeting Allocations (CRUD)

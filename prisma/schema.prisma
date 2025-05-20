@@ -162,6 +162,7 @@ model Period {
   updatedAt DateTime  @updatedAt
   deletedAt DateTime?
 
+  // @@unique([userId, startDate, endDate], name: "uniq_user_period")
   @@unique([userId, startDate, endDate, periodType], name: "uniq_user_period_dates_type")
   @@index([userId, periodType], name: "idx_period_user_type")
 }

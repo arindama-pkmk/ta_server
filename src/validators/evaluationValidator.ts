@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 // For PSPEC 4.2: Requesting calculation for a period
 export const calculateEvaluationsSchema = z.object({
-    periodId: z.string().uuid("Valid period ID is required"),
+    // periodId: z.string().uuid("Valid period ID is required"),
     // ratioCodes: z.array(z.string()).optional(), // If you implement selective calculation
 });
 

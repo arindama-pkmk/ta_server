@@ -270,8 +270,8 @@ export class Routes {
         app.use(`${basePath}/periods`, this.periodRoutes.getRouter());
         app.use(`${basePath}/users`, this.userRoutes.getRouter());
         app.use(`${basePath}/transactions`, this.transactionRoutes.getRouter());
-        app.use(`${basePath}/transaction-budgeting`, this.transactionBudgetingRoutes.getRouter());
-        app.use(`${basePath}/transaction-evaluations`, this.transactionEvaluationRoutes.getRouter());
+        app.use(`${basePath}/budgeting`, this.transactionBudgetingRoutes.getRouter());
+        app.use(`${basePath}/evaluations`, this.transactionEvaluationRoutes.getRouter());
         app.use(`${basePath}/category-hierarchy`, this.categoryHierarchyRoutes.getRouter()); // Added mounting
     }
 }

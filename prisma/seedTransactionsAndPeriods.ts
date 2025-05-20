@@ -93,7 +93,14 @@ async function main() {
         });
         console.log(`  Upserted period ID ${seededPeriod.id} for user ${user.id}`);
 
-        const transactionsToCreate = [];
+        const transactionsToCreate: {
+            userId: string;
+            subcategoryId: string;
+            description: string;
+            date: Date;
+            amount: number;
+            isBookmarked: boolean;
+        }[] = [];
         // Generate transactions for each day in the range
         for (let d = 0; d < totalDays; d++) {
             const currentDate = subDays(endDate, d);

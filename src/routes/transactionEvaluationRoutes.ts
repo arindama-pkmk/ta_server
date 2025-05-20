@@ -28,7 +28,7 @@ export class TransactionEvaluationRoutes {
 
         /**
          * @openapi
-         * /transaction-evaluations/calculate:
+         * /evaluations/calculate:
          *   post:
          *     tags:
          *       - Evaluations
@@ -70,7 +70,7 @@ export class TransactionEvaluationRoutes {
 
         /**
          * @openapi
-         * /transaction-evaluations/history:
+         * /evaluations/history:
          *   get:
          *     tags:
          *       - Evaluations
@@ -106,7 +106,7 @@ export class TransactionEvaluationRoutes {
 
         /**
          * @openapi
-         * /transaction-evaluations/{evaluationResultId}/detail:
+         * /evaluations/{evaluationResultId}/detail:
          *   get:
          *     tags:
          *       - Evaluations
