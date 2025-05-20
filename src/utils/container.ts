@@ -24,10 +24,15 @@ import { TransactionBudgetingRepository } from '../repositories/transactionBudge
 import { TransactionBudgetingService } from '../services/transactionBudgetingService';
 import { TransactionBudgetingController } from '../controllers/transactionBudgetingController';
 import { TransactionBudgetingRoutes } from '../routes/transactionBudgetingRoutes';
-import { PeriodRepository } from '../repositories/periodRepository'; // Add this
-import { PeriodService } from '../services/periodService';       // Add this
-import { PeriodController } from '../controllers/periodController'; // Add this
-import { PeriodRoutes } from '../routes/periodRoutes';       // Add this
+import { PeriodRepository } from '../repositories/periodRepository';
+import { PeriodService } from '../services/periodService';
+import { PeriodController } from '../controllers/periodController';
+import { PeriodRoutes } from '../routes/periodRoutes';
+// Import CategoryHierarchy components
+import { CategoryHierarchyRepository } from '../repositories/categoryHierarchyRepository'; // Should already be there
+import { CategoryHierarchyService } from '../services/categoryHierarchyService';       // Should already be there
+import { CategoryHierarchyController } from '../controllers/categoryHierarchyController'; // Should already be there
+import { CategoryHierarchyRoutes } from '../routes/categoryHierarchyRoutes';       // <<< IMPORT THIS
 
 const container = new Container();
 
@@ -60,10 +65,16 @@ container.bind<OtpVerificationController>(TYPES.OtpVerificationController).to(Ot
 container.bind<ClassifierController>(TYPES.ClassifierController).to(ClassifierController);
 container.bind<ClassifierService>(TYPES.ClassifierService).to(ClassifierService);
 
-container.bind<PeriodRepository>(TYPES.PeriodRepository).to(PeriodRepository); // Add this
-container.bind<PeriodService>(TYPES.PeriodService).to(PeriodService);       // Add this
-container.bind<PeriodController>(TYPES.PeriodController).to(PeriodController); // Add this
-container.bind<PeriodRoutes>(TYPES.PeriodRoutes).to(PeriodRoutes);       // Add this
+container.bind<PeriodRepository>(TYPES.PeriodRepository).to(PeriodRepository);
+container.bind<PeriodService>(TYPES.PeriodService).to(PeriodService);
+container.bind<PeriodController>(TYPES.PeriodController).to(PeriodController);
+container.bind<PeriodRoutes>(TYPES.PeriodRoutes).to(PeriodRoutes);
+
+// Bind CategoryHierarchy components
+container.bind<CategoryHierarchyRepository>(TYPES.CategoryHierarchyRepository).to(CategoryHierarchyRepository);
+container.bind<CategoryHierarchyService>(TYPES.CategoryHierarchyService).to(CategoryHierarchyService);
+container.bind<CategoryHierarchyController>(TYPES.CategoryHierarchyController).to(CategoryHierarchyController);
+container.bind<CategoryHierarchyRoutes>(TYPES.CategoryHierarchyRoutes).to(CategoryHierarchyRoutes); // <<< ADD THIS BINDING
 
 container.bind<HealthController>(TYPES.HealthController).to(HealthController);
 
