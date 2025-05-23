@@ -481,26 +481,7 @@ const swaggerDefinition = {
                 }
             },
             ExpenseCategorySuggestionResponse: { type: 'object', properties: { success: { type: 'boolean' }, data: { type: 'array', items: { $ref: '#/components/schemas/ExpenseCategorySuggestion' } } } },
-            SaveExpenseAllocationsPayload: {
-                type: 'object',
-                required: ['budgetPeriodId', 'totalBudgetableIncome', 'allocations'],
-                properties: {
-                    budgetPeriodId: { type: 'string', format: 'uuid' },
-                    totalBudgetableIncome: { type: 'number', format: 'float', minimum: 0 },
-                    allocations: {
-                        type: 'array',
-                        items: {
-                            type: 'object',
-                            required: ['categoryId', 'percentage', 'selectedSubcategoryIds'],
-                            properties: {
-                                categoryId: { type: 'string', format: 'uuid' },
-                                percentage: { type: 'number', format: 'float', minimum: 0, maximum: 100 },
-                                selectedSubcategoryIds: { type: 'array', items: { type: 'string', format: 'uuid' }, minItems: 1 }
-                            }
-                        }
-                    }
-                }
-            },
+
             SaveExpenseAllocationsResponse: {
                 type: 'object',
                 properties: {
@@ -526,7 +507,7 @@ const swaggerDefinition = {
                             code: { type: 'string' },
                             title: { type: 'string' },
                             description: { type: 'string', nullable: true },
-                            idealText: {type: 'string', nullable: true },
+                            idealText: { type: 'string', nullable: true },
                         }
                     },
                     value: { type: 'number', format: 'float' },

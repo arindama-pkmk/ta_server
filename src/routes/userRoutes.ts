@@ -256,6 +256,31 @@ export class UserRoutes {
             (req: Request, res: Response, next: NextFunction) => this.userController.deleteCurrentUserAccount(req as AuthRequest, res, next)
         );
 
+        /**
+         * @openapi
+         * /users/occupations:
+         *   get:
+         *     tags:
+         *       - Users
+         *     summary: Retrieves a list of available occupations
+         *     description: Returns a list of predefined occupation names that users can select for their profile.
+         *     responses:
+         *       '200':
+         *         description: A list of occupations.
+         *         content:
+         *           application/json:
+         *             schema:
+         *               type: array
+         *               items:
+         *                 type: string
+         *                 example: Software Engineer
+         *       '500':
+         *         description: Internal server error.
+         *         content:
+         *           application/json:
+         *             schema:
+         *               $ref: '#/components/schemas/ErrorResponse'
+         */
         this.router.get('/occupations',
             (req: Request, res: Response, next: NextFunction) => this.userController.getOccupations(req, res, next)
         );

@@ -55,6 +55,21 @@ export interface EvaluationResultDetailDto {
     calculatedDenominator?: number;
 }
 
+export interface ConceptualSums {
+    liquid: number;
+    nonLiquid: number;
+    liabilities: number;
+    expense: number;
+    income: number;
+    savings: number;
+    debtPayments: number;
+    deductions: number;
+    invested: number;
+    totalAssets: number; // Properti opsional, akan dihitung
+    netWorth: number;    // Properti opsional, akan dihitung
+    netIncome: number;   // Properti opsional, akan dihitung
+}
+
 
 @injectable()
 export class TransactionEvaluationService {
@@ -68,6 +83,7 @@ export class TransactionEvaluationService {
         this.evaluationRepository = evaluationRepository;
         this.transactionService = transactionService;
     }
+
 
     private determineEvaluationStatus(value: number, ratio: Ratio): EvaluationStatus {
         if (isNaN(value) || !isFinite(value)) return EvaluationStatus.INCOMPLETE;
@@ -95,10 +111,6 @@ export class TransactionEvaluationService {
                 }
                 const subId = comp.subcategoryId;
                 subcatAggs[subId] ??= { sum: 0, count: 0 };
-                transactions.filter(t => t.subcategoryId === subId).forEach(tx => {
-                    subcatAggs[subId].sum += tx.amount;
-                    subcatAggs[subId].count++;
-                });
             }
             for (const comp of sideComps) {
                 if (!comp.subcategory) continue;
@@ -121,12 +133,13 @@ export class TransactionEvaluationService {
         }
         return (numSum / denSum) * (ratio.multiplier ?? 1);
     }
-    
+
     // Full conceptual sums calculation based on Flutter's _TxSums/_computeSums
-    private computeConceptualSumsForBreakdown(transactions: PopulatedTransaction[]): Record<string, number> {
-        const sums: Record<string, number> = {
+    private computeConceptualSumsForBreakdown(transactions: PopulatedTransaction[]): ConceptualSums {
+        const sums: ConceptualSums = {
             liquid: 0, nonLiquid: 0, liabilities: 0, expense: 0, income: 0,
             savings: 0, debtPayments: 0, deductions: 0, invested: 0,
+            totalAssets: 0, netWorth: 0, netIncome: 0
         };
 
         // These names MUST match the subcategory names in your database for this to work.
@@ -142,15 +155,17 @@ export class TransactionEvaluationService {
 
         for (const tx of transactions) {
             const subName = tx.subcategory.name; // Assumes subcategory is populated
-            if (liquidSubcategoryNames.includes(subName)) sums.liquid += tx.amount;
-            if (nonLiquidSubcategoryNames.includes(subName)) sums.nonLiquid += tx.amount;
-            if (liabilitiesSubcategoryNames.includes(subName)) sums.liabilities += tx.amount;
-            if (expenseSubcategoryNames.includes(subName)) sums.expense += tx.amount;
-            if (incomeSubcategoryNames.includes(subName)) sums.income += tx.amount;
-            if (savingsSubcategoryNames.includes(subName)) sums.savings += tx.amount;
-            if (debtPaymentsSubcategoryNames.includes(subName)) sums.debtPayments += tx.amount;
-            if (deductionsSubcategoryNames.includes(subName)) sums.deductions += tx.amount;
-            if (investedSubcategoryNames.includes(subName)) sums.invested += tx.amount;
+            if (sums) {
+                if (liquidSubcategoryNames.includes(subName)) sums.liquid += tx.amount;
+                if (nonLiquidSubcategoryNames.includes(subName)) sums.nonLiquid += tx.amount;
+                if (liabilitiesSubcategoryNames.includes(subName)) sums.liabilities += tx.amount;
+                if (expenseSubcategoryNames.includes(subName)) sums.expense += tx.amount;
+                if (incomeSubcategoryNames.includes(subName)) sums.income += tx.amount;
+                if (savingsSubcategoryNames.includes(subName)) sums.savings += tx.amount;
+                if (debtPaymentsSubcategoryNames.includes(subName)) sums.debtPayments += tx.amount;
+                if (deductionsSubcategoryNames.includes(subName)) sums.deductions += tx.amount;
+                if (investedSubcategoryNames.includes(subName)) sums.invested += tx.amount;
+            }
         }
 
         sums['totalAssets'] = sums.liquid + sums.nonLiquid;
@@ -247,8 +262,11 @@ export class TransactionEvaluationService {
         logger.info(`[EvaluationService] Fetching evaluation history for user ${userId}`);
         return this.evaluationRepository.findAllByUserIdAndOptionalDateRange(
             userId,
-            { startDate: queryStartDate, endDate: queryEndDate },
-            { orderBy: [{ startDate: 'desc' }, { calculatedAt: 'desc' }] }
+            {
+                customStartDate: queryStartDate, // Gunakan customStartDate
+                customEndDate: queryEndDate,   // Gunakan customEndDate
+                orderBy: [{ startDate: 'desc' }, { calculatedAt: 'desc' }]
+            }
         );
     }
 
@@ -269,7 +287,7 @@ export class TransactionEvaluationService {
         });
 
         if (!fullResultFromDb) {
-             throw new NotFoundError(`Evaluation result with ID ${evaluationResultId} consistency error.`);
+            throw new NotFoundError(`Evaluation result with ID ${evaluationResultId} consistency error.`);
         }
 
         const transactionsInPeriod = await this.transactionService.getAllUserTransactions(userId, {
@@ -310,20 +328,22 @@ export class TransactionEvaluationService {
         const processSideForBreakdown = (side: Side): number => {
             let totalSideVal = 0;
             const sideComps = populatedRatioForCalc.ratioComponents.filter(c => c.side === side);
-             const subcatAggs: Record<string, { sum: number, count: number }> = {};
-             for (const comp of sideComps) {
+            const subcatAggs: Record<string, { sum: number, count: number }> = {};
+            for (const comp of sideComps) {
                 if (!comp.subcategory) continue;
                 const subId = comp.subcategoryId;
                 subcatAggs[subId] ??= { sum: 0, count: 0 };
                 transactionsInPeriod.filter(t => t.subcategoryId === subId).forEach(tx => {
-                    subcatAggs[subId].sum += tx.amount;
-                    subcatAggs[subId].count++;
+                    if (subcatAggs[subId]) {
+                        subcatAggs[subId].sum += tx.amount;
+                        subcatAggs[subId].count++;
+                    }
                 });
             }
             for (const comp of sideComps) {
                 if (!comp.subcategory) continue;
                 const agg = subcatAggs[comp.subcategoryId]; let valToUse = 0;
-                if(agg) {
+                if (agg) {
                     if (comp.aggregationType === AggregationType.SUM) valToUse = agg.sum;
                     else if (comp.aggregationType === AggregationType.AVG) valToUse = (agg.count > 0) ? (agg.sum / agg.count) : 0;
                 }
@@ -349,7 +369,7 @@ export class TransactionEvaluationService {
             createdAt: fullResultFromDb.createdAt,
             updatedAt: fullResultFromDb.updatedAt,
             deletedAt: fullResultFromDb.deletedAt,
-            breakdownComponents: breakdownComponentsDto.length > 0 ? breakdownComponentsDto : undefined,
+            breakdownComponents: breakdownComponentsDto.length > 0 ? breakdownComponentsDto : [],
             calculatedNumerator: calcNum,
             calculatedDenominator: calcDen,
         };

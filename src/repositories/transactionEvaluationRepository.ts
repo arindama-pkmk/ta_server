@@ -19,10 +19,9 @@ export type PopulatedEvaluationResult = Prisma.EvaluationResultGetPayload<{
 
 // Define the type for the arguments more precisely
 type FindAllArgs = Omit<Prisma.EvaluationResultFindManyArgs, 'where' | 'include'> & {
-    where?: Prisma.EvaluationResultWhereInput; // Prisma's where type
-    // These are for custom filtering logic, not direct Prisma args
-    customStartDate?: Date;
-    customEndDate?: Date;
+    where?: Prisma.EvaluationResultWhereInput;
+    customStartDate?: Date | undefined; // Tambahkan `| undefined` secara eksplisit
+    customEndDate?: Date | undefined;   // Tambahkan `| undefined` secara eksplisit
 };
 
 
