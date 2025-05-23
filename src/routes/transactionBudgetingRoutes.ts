@@ -5,7 +5,7 @@ import { inject, injectable } from 'inversify';
 import { TYPES } from '../utils/types';
 import { authenticate } from '../middlewares/authMiddleware';
 import { validateZod } from '../middlewares/validationMiddleware';
-import { saveExpenseAllocationsSchema } from '../validators/budgetValidator';
+import { getIncomeSummaryForDatesSchema, saveExpenseAllocationsSchema } from '../validators/budgetValidator';
 // Import DTOs for specific BudgetAllocation CRUD if you create Zod schemas for them
 // import { createBudgetAllocationSchema, updateBudgetAllocationSchema } from '../validators/budgetValidator';
 import { AuthRequest } from '../types/auth'; // Corrected import
@@ -30,41 +30,95 @@ export class TransactionBudgetingRoutes {
 
         /**
          * @openapi
-         * /budgeting/income-summary/{periodId}:
+         * /budgeting/plans:
          *   get:
          *     tags:
-         *       - Budgeting
-         *     summary: Get summarized income for a specific period
+         *       - Budgeting Plans
+         *     summary: Get all budget plans for the user
+         *     security:
+         *       - bearerAuth: []
+         *     parameters:
+         *       - in: query
+         *         name: startDate
+         *         schema: { type: string, format: date }
+         *         description: Optional start date to filter plans.
+         *       - in: query
+         *         name: endDate
+         *         schema: { type: string, format: date }
+         *         description: Optional end date to filter plans.
+         *     responses:
+         *       '200':
+         *         description: A list of budget plans.
+         *         content:
+         *           application/json:
+         *             schema:
+         *               $ref: '#/components/schemas/BudgetPlanListResponse'
+         *       '401':
+         *         description: Unauthorized.
+         */
+        this.router.get('/plans',
+            (req: Request, res: Response, next: NextFunction) => this.controller.getBudgetPlans(req as AuthRequest, res, next)
+        );
+
+        /**
+         * @openapi
+         * /budgeting/plans/{budgetPlanId}:
+         *   get:
+         *     tags:
+         *       - Budgeting Plans
+         *     summary: Get details of a specific budget plan
          *     security:
          *       - bearerAuth: []
          *     parameters:
          *       - in: path
-         *         name: periodId
+         *         name: budgetPlanId
          *         required: true
-         *         schema:
-         *           type: string
-         *           format: uuid
-         *         description: The ID of the period for which to summarize income.
+         *         schema: { type: string, format: uuid }
          *     responses:
          *       '200':
-         *         description: Income summary retrieved successfully.
+         *         description: Budget plan details.
+         *         content:
+         *           application/json:
+         *             schema:
+         *               $ref: '#/components/schemas/BudgetPlanResponse'
+         *       '401': { description: "Unauthorized" }
+         *       '404': { description: "Budget plan not found" }
+         */
+        this.router.get('/plans/:budgetPlanId',
+            (req: Request, res: Response, next: NextFunction) => this.controller.getBudgetPlanDetails(req as AuthRequest, res, next)
+        );
+
+        /**
+         * @openapi
+         * /budgeting/income-summary:
+         *   get:
+         *     tags:
+         *       - Budgeting Core
+         *     summary: Get summarized income for a specific date range
+         *     security:
+         *       - bearerAuth: []
+         *     parameters:
+         *       - in: query
+         *         name: startDate
+         *         required: true
+         *         schema: { type: string, format: date }
+         *       - in: query
+         *         name: endDate
+         *         required: true
+         *         schema: { type: string, format: date }
+         *     responses:
+         *       '200':
+         *         description: Income summary.
          *         content:
          *           application/json:
          *             schema:
          *               $ref: '#/components/schemas/IncomeSummaryResponse'
-         *       '400':
-         *         description: Invalid periodId or period is not of type 'income' or 'general_evaluation'.
-         *         content:
-         *           application/json:
-         *             schema:
-         *               $ref: '#/components/schemas/ErrorResponse'
-         *       '401':
-         *         description: Unauthorized.
-         *       '404':
-         *         description: Period not found.
+         *       '400': { description: "Invalid date range" }
+         *       '401': { description: "Unauthorized" }
          */
-        this.router.get('/income-summary/:periodId',
-            (req: Request, res: Response, next: NextFunction) => this.controller.getIncomeSummaryForPeriod(req as AuthRequest, res, next)
+        this.router.get('/income-summary',
+            // validateZod(getIncomeSummaryForDatesSchema), // Zod for query params needs custom handling or separate middleware
+            (req: Request, res: Response, next: NextFunction) => this.controller.getIncomeSummaryForDateRange(req as AuthRequest, res, next)
         );
 
         /**
@@ -72,23 +126,18 @@ export class TransactionBudgetingRoutes {
          * /budgeting/expense-category-suggestions:
          *   get:
          *     tags:
-         *       - Budgeting
-         *     summary: Get expense category allocation suggestions based on user occupation
+         *       - Budgeting Core
+         *     summary: Get expense category suggestions
          *     security:
          *       - bearerAuth: []
          *     responses:
          *       '200':
-         *         description: Expense category suggestions retrieved successfully.
+         *         description: List of suggestions.
          *         content:
          *           application/json:
          *             schema:
          *               $ref: '#/components/schemas/ExpenseCategorySuggestionResponse'
-         *       '401':
-         *         description: Unauthorized.
-         *       '404':
-         *         description: User not found (should not happen for authenticated user).
-         *       '500':
-         *         description: Critical data missing (e.g., 'Pengeluaran' AccountType).
+         *       '401': { description: "Unauthorized" }
          */
         this.router.get('/expense-category-suggestions',
             (req: Request, res: Response, next: NextFunction) => this.controller.getExpenseCategorySuggestions(req as AuthRequest, res, next)
@@ -99,8 +148,8 @@ export class TransactionBudgetingRoutes {
          * /budgeting/expense-allocations:
          *   post:
          *     tags:
-         *       - Budgeting
-         *     summary: Save expense allocations for a budget period
+         *       - Budgeting Core
+         *     summary: Save a budget plan with its expense allocations
          *     security:
          *       - bearerAuth: []
          *     requestBody:
@@ -111,214 +160,56 @@ export class TransactionBudgetingRoutes {
          *             $ref: '#/components/schemas/SaveExpenseAllocationsPayload'
          *     responses:
          *       '201':
-         *         description: Budget plan saved successfully. Returns the saved allocations.
+         *         description: Budget plan and allocations saved successfully.
          *         content:
          *           application/json:
-         *             schema:
-         *               $ref: '#/components/schemas/SaveExpenseAllocationsResponse'
-         *       '400':
-         *         description: Invalid input data, period type mismatch, or percentage mismatch.
-         *         content:
-         *           application/json:
-         *             schema:
-         *               oneOf:
-         *                 - $ref: '#/components/schemas/ErrorValidationResponse'
-         *                 - $ref: '#/components/schemas/ErrorResponse'
-         *       '401':
-         *         description: Unauthorized.
-         *       '404':
-         *         description: Period or Category not found.
+         *             schema: # Returns the created BudgetPlan with its allocations
+         *               type: object
+         *               properties:
+         *                  success: { type: boolean }
+         *                  message: { type: string }
+         *                  data: { $ref: '#/components/schemas/BudgetPlan' }
+         *       '400': { description: "Invalid input" }
+         *       '401': { description: "Unauthorized" }
          */
         this.router.post('/expense-allocations',
             validateZod(saveExpenseAllocationsSchema),
             (req: Request, res: Response, next: NextFunction) => this.controller.saveExpenseAllocations(req as AuthRequest, res, next)
         );
 
-        // CRUD for individual BudgetAllocation records
         /**
          * @openapi
-         * /budgeting:
-         *   post:
-         *     tags:
-         *       - Budgeting Allocations (CRUD)
-         *     summary: Create a new budget allocation record
-         *     description: Manually create a single budget allocation. Usually, allocations are managed via `POST /expense-allocations`.
-         *     security:
-         *       - bearerAuth: []
-         *     requestBody:
-         *       required: true
-         *       content:
-         *         application/json:
-         *           schema:
-         *             $ref: '#/components/schemas/CreateBudgetAllocationPayload'
-         *     responses:
-         *       '201':
-         *         description: Budget allocation created.
-         *         content:
-         *           application/json:
-         *             schema:
-         *               $ref: '#/components/schemas/BudgetAllocationResponse'
-         *       '400':
-         *         description: Invalid input or subcategory does not belong to category.
-         *         content:
-         *           application/json:
-         *             schema:
-         *               $ref: '#/components/schemas/ErrorResponse'
-         *       '401':
-         *         description: Unauthorized.
-         *       '404':
-         *         description: Period not found.
-         */
-        this.router.post('/',
-            // validateZod(createBudgetAllocationSchema), // Add Zod schema if enabling direct creation
-            (req: Request, res: Response, next: NextFunction) => this.controller.createAllocation(req as AuthRequest, res, next)
-        );
-
-        /**
-         * @openapi
-         * /budgeting:
+         * /budgeting/allocations:
          *   get:
          *     tags:
          *       - Budgeting Allocations (CRUD)
-         *     summary: Get all budget allocations for a period
+         *     summary: Get all expense allocations for a specific budget plan
          *     security:
          *       - bearerAuth: []
          *     parameters:
          *       - in: query
-         *         name: periodId
+         *         name: budgetPlanId
          *         required: true
-         *         schema:
-         *           type: string
-         *           format: uuid
-         *         description: The ID of the period to fetch allocations for.
+         *         schema: { type: string, format: uuid }
          *     responses:
          *       '200':
-         *         description: A list of budget allocations for the period.
+         *         description: List of expense allocations.
          *         content:
          *           application/json:
          *             schema:
-         *               $ref: '#/components/schemas/BudgetAllocationListResponse'
-         *       '400':
-         *         description: Missing or invalid periodId.
-         *         content:
-         *           application/json:
-         *             schema:
-         *               $ref: '#/components/schemas/ErrorResponse'
-         *       '401':
-         *         description: Unauthorized.
-         *       '404':
-         *         description: Period not found.
+         *                type: object
+         *                properties:
+         *                  success: { type: boolean }
+         *                  data:
+         *                    type: array
+         *                    items: { $ref: '#/components/schemas/ExpenseAllocation' }
+         *       '400': { description: "Missing budgetPlanId" }
+         *       '401': { description: "Unauthorized" }
+         *       '404': { description: "Budget plan not found" }
          */
-        this.router.get('/',
-            (req: Request, res: Response, next: NextFunction) => this.controller.getAllocationsForPeriod(req as AuthRequest, res, next)
-        );
-
-        /**
-         * @openapi
-         * /budgeting/{allocationId}:
-         *   get:
-         *     tags:
-         *       - Budgeting Allocations (CRUD)
-         *     summary: Get a specific budget allocation by ID
-         *     security:
-         *       - bearerAuth: []
-         *     parameters:
-         *       - in: path
-         *         name: allocationId
-         *         required: true
-         *         schema:
-         *           type: string
-         *           format: uuid
-         *         description: The ID of the budget allocation.
-         *     responses:
-         *       '200':
-         *         description: Budget allocation details.
-         *         content:
-         *           application/json:
-         *             schema:
-         *               $ref: '#/components/schemas/BudgetAllocationResponse'
-         *       '400':
-         *         description: Missing allocationId parameter.
-         *       '401':
-         *         description: Unauthorized.
-         *       '404':
-         *         description: Budget allocation or its period not found/access denied.
-         */
-        this.router.get('/:allocationId',
-            (req: Request, res: Response, next: NextFunction) => this.controller.getAllocationById(req as AuthRequest, res, next)
-        );
-
-        /**
-         * @openapi
-         * /budgeting/{allocationId}:
-         *   put:
-         *     tags:
-         *       - Budgeting Allocations (CRUD)
-         *     summary: Update an existing budget allocation
-         *     security:
-         *       - bearerAuth: []
-         *     parameters:
-         *       - in: path
-         *         name: allocationId
-         *         required: true
-         *         schema:
-         *           type: string
-         *           format: uuid
-         *         description: The ID of the budget allocation to update.
-         *     requestBody:
-         *       required: true
-         *       content:
-         *         application/json:
-         *           schema:
-         *             $ref: '#/components/schemas/UpdateBudgetAllocationPayload'
-         *     responses:
-         *       '200':
-         *         description: Budget allocation updated.
-         *         content:
-         *           application/json:
-         *             schema:
-         *               $ref: '#/components/schemas/BudgetAllocationResponse'
-         *       '400':
-         *         description: Invalid input data or missing allocationId.
-         *       '401':
-         *         description: Unauthorized.
-         *       '404':
-         *         description: Budget allocation or its period not found/access denied.
-         */
-        this.router.put('/:allocationId',
-            // validateZod(updateBudgetAllocationSchema), // Add Zod schema if enabling
-            (req: Request, res: Response, next: NextFunction) => this.controller.updateAllocation(req as AuthRequest, res, next)
-        );
-
-        /**
-         * @openapi
-         * /budgeting/{allocationId}:
-         *   delete:
-         *     tags:
-         *       - Budgeting Allocations (CRUD)
-         *     summary: Delete a budget allocation (soft delete)
-         *     security:
-         *       - bearerAuth: []
-         *     parameters:
-         *       - in: path
-         *         name: allocationId
-         *         required: true
-         *         schema:
-         *           type: string
-         *           format: uuid
-         *         description: The ID of the budget allocation to delete.
-         *     responses:
-         *       '204':
-         *         description: Budget allocation deleted. No content.
-         *       '400':
-         *         description: Missing allocationId parameter.
-         *       '401':
-         *         description: Unauthorized.
-         *       '404':
-         *         description: Budget allocation or its period not found/access denied.
-         */
-        this.router.delete('/:allocationId',
-            (req: Request, res: Response, next: NextFunction) => this.controller.deleteAllocation(req as AuthRequest, res, next)
+        this.router.get('/allocations',
+            // Consider Zod validation for query.budgetPlanId if needed
+            (req: Request, res: Response, next: NextFunction) => this.controller.getAllocationsForBudgetPlan(req as AuthRequest, res, next)
         );
     }
 }

@@ -12,7 +12,7 @@ const seedScriptsInOrder = [
     'seedUsers.ts',
     'seedCategoryOccupations.ts',
     'seedRatiosAndComponents.ts',
-    'seedTransactionsAndPeriods.ts',
+    'seedTransactionsAndBudgetPlans.ts',
     'seedEvaluationResults.ts',
 ];
 
@@ -26,7 +26,7 @@ async function main() {
             execSync(`npx ts-node ${scriptPath}`, { stdio: 'inherit' });
             console.log(`✅ Successfully finished seed script: ${scriptFile}`);
         } catch (error) {
-            console.error(`❌ Error running seed script ${scriptFile}:`); // Removed error object logging for brevity
+            console.error(`❌ Error running seed script ${scriptFile}:`, error); // Removed error object logging for brevity
             console.error('Stopping further seeding due to error.');
             process.exit(1);
         }

@@ -1,6 +1,6 @@
 // prisma/seedEvaluationResults.ts
-import { PrismaClient, Ratio, RatioComponent, Subcategory, Side } from "@prisma/client";
-import { startOfDay, endOfDay } from 'date-fns'; // For precise date comparisons
+import { PrismaClient, Ratio, RatioComponent, Subcategory, Side, User } from "@prisma/client"; // Added User
+import { startOfDay, endOfDay, subMonths, addMonths } from 'date-fns';
 
 const prisma = new PrismaClient();
 
@@ -15,33 +15,11 @@ interface PopulatedRatio extends Ratio {
     ratioComponents: (RatioComponent & { subcategory: Subcategory })[];
 }
 
-// This is a simplified version of your Flutter _TxSums and _computeSums
-// Adapted for the seed environment.
-// class TxSums {
-//     sums: Record<string, number> = {}; // Store sums for different conceptual groups
-
-//     constructor(
-//         transactions: TransactionData[],
-//         ratioComponents: (RatioComponent & { subcategory: Subcategory })[]
-//     ) {
-//         const subcategoryMap = new Map<string, string>(); // subcategoryId -> subcategoryName
-//         ratioComponents.forEach(rc => {
-//             if (rc.subcategory) { // Ensure subcategory is populated
-//                 subcategoryMap.set(rc.subcategory.id, rc.subcategory.name);
-//             }
-//         });
-
-//         // Initialize conceptual sums based on unique subcategories involved in ANY ratio
-//         // For simplicity, we'll directly sum for numerator/denominator components later.
-//         // This TxSums could be made more generic if many ratios shared intermediate sums like "Total Liquid Assets"
-//         // but for direct calculation per ratio, it's simpler to process components directly.
-//     }
-// }
-
 function calculateRatioValue(
     transactions: TransactionData[],
     ratio: PopulatedRatio
 ): number {
+    // ... (this function remains the same as your provided one)
     let numeratorSum = 0;
     let denominatorSum = 0;
 
@@ -49,7 +27,7 @@ function calculateRatioValue(
         const relevantTransactions = transactions.filter(t => t.subcategoryId === component.subcategoryId);
         let componentSubtotal = 0;
         for (const tx of relevantTransactions) {
-            componentSubtotal += tx.amount; // Assuming SUM aggregation for all for now
+            componentSubtotal += tx.amount;
         }
 
         if (component.side === Side.numerator) {
@@ -58,27 +36,20 @@ function calculateRatioValue(
             denominatorSum += componentSubtotal * component.sign;
         }
     }
-
     if (denominatorSum === 0) {
-        // Handle division by zero - specific ratios might have different fallbacks
-        // For example, if income is 0 for Savings Ratio, result is 0.
-        // If total assets is 0 for Debt-to-Asset, might be 0 or Infinity.
-        // We'll return 0 for simplicity in seeding, or NaN if that's preferred for "incomplete".
-        if (ratio.code === "LIQUIDITY_RATIO" && numeratorSum === 0) return 0; // If no expenses and no liquid assets
-        if (ratio.code === "LIQUIDITY_RATIO" && numeratorSum > 0) return Infinity; // Positive liquid assets but zero expenses
-        // Add more specific handling per ratio if needed based on your app's logic for zero denominators
-        return 0.0;
+        if (ratio.code === "LIQUIDITY_RATIO" && numeratorSum === 0) return 0;
+        if (ratio.code === "LIQUIDITY_RATIO" && numeratorSum > 0) return Infinity;
+        return 0.0; // Default or NaN based on how you want to handle it
     }
-
     const rawValue = numeratorSum / denominatorSum;
-    return rawValue * (ratio.multiplier || 1); // Apply multiplier
+    return rawValue * (ratio.multiplier || 1);
 }
 
 
 async function main() {
     console.log(`Start seeding EvaluationResults ...`);
 
-    const users = await prisma.user.findMany();
+    const users: User[] = await prisma.user.findMany(); // Just need user IDs
     if (!users.length) {
         console.log("No users found. Skipping EvaluationResult seeding.");
         return;
@@ -87,9 +58,7 @@ async function main() {
     const ratios: PopulatedRatio[] = await prisma.ratio.findMany({
         include: {
             ratioComponents: {
-                include: {
-                    subcategory: true, // We need subcategory names/IDs for filtering transactions
-                },
+                include: { subcategory: true },
             },
         },
     });
@@ -98,78 +67,92 @@ async function main() {
         return;
     }
 
+    const today = new Date();
+
     for (const user of users) {
         console.log(`  Processing user: ${user.name} (ID: ${user.id})`);
-        const userPeriods = await prisma.period.findMany({
-            where: {
-                userId: user.id,
-                // periodType: "general_evaluation" // Or fetch all types if you want to calc for all
-            },
-        });
 
-        if (!userPeriods.length) {
-            console.log(`    No periods found for user ${user.name}. Skipping.`);
-            continue;
-        }
+        // Create evaluations for the last 3 full months
+        for (let m = 1; m <= 3; m++) {
+            const currentMonthEvalStart = startOfDay(subMonths(today, m));
+            const currentMonthEvalEnd = endOfDay(subMonths(startOfDay(addMonths(today, 1 - m)), 1)); // End of the m-th previous month
 
-        for (const period of userPeriods) {
-            console.log(`    Processing period: ${period.id} (Type: ${period.periodType}, ${period.startDate.toISOString().split('T')[0]} to ${period.endDate.toISOString().split('T')[0]})`);
+            console.log(`    Processing evaluation period: ${currentMonthEvalStart.toISOString().split('T')[0]} to ${currentMonthEvalEnd.toISOString().split('T')[0]}`);
 
             const transactionsInPeriod = await prisma.transaction.findMany({
                 where: {
                     userId: user.id,
                     date: {
-                        gte: startOfDay(period.startDate), // Ensure comparison is from start of day
-                        lte: endOfDay(period.endDate),     // Ensure comparison is to end of day
+                        gte: currentMonthEvalStart,
+                        lte: currentMonthEvalEnd,
                     },
                 },
-                select: { id: true, amount: true, subcategoryId: true, date: true }, // Select only needed fields
+                select: { id: true, amount: true, subcategoryId: true, date: true },
             });
 
             if (!transactionsInPeriod.length) {
-                console.log(`      No transactions found in this period for user ${user.name}.`);
-                // Optionally create "INCOMPLETE" results or skip
+                console.log(`      No transactions found in this evaluation period for user ${user.name}.`);
+                // Continue to next period or create INCOMPLETE results
+                // For simplicity, we'll create INCOMPLETE if no transactions
+            } else {
+                console.log(`      Found ${transactionsInPeriod.length} transactions for calculation.`);
             }
 
-            console.log(`      Found ${transactionsInPeriod.length} transactions for calculation.`);
 
             for (const ratio of ratios) {
-                const calculatedValue = calculateRatioValue(transactionsInPeriod, ratio);
+                let calculatedValue = 0;
+                let status: "IDEAL" | "NOT_IDEAL" | "INCOMPLETE" = "INCOMPLETE";
 
-                console.log(`        Ratio: ${ratio.title}, Raw Calculated Value: ${calculatedValue / (ratio.multiplier || 1)}, Final Value: ${calculatedValue}`);
-
-                if (isNaN(calculatedValue) || !isFinite(calculatedValue)) {
-                    console.warn(`        Skipping EvaluationResult for Ratio "${ratio.title}" due to NaN/Infinity value. Period ID: ${period.id}`);
-                    // Optionally, you could store it with a specific status or a conventional value.
-                    // For now, we skip to avoid DB errors with non-finite floats.
-                    continue;
+                if (transactionsInPeriod.length > 0) {
+                    calculatedValue = calculateRatioValue(transactionsInPeriod, ratio);
+                    if (isNaN(calculatedValue) || !isFinite(calculatedValue)) {
+                        console.warn(`        Skipping EvaluationResult for Ratio "${ratio.title}" due to NaN/Infinity value.`);
+                        calculatedValue = 0; // Store 0 for NaN/Infinity
+                        status = 'INCOMPLETE';
+                    } else {
+                        // Determine status (simplified from your service, can be more complex)
+                        let isIdeal = false;
+                        if (ratio.lowerBound !== null && ratio.upperBound !== null) {
+                            isIdeal = (ratio.isLowerBoundInclusive ? calculatedValue >= ratio.lowerBound : calculatedValue > ratio.lowerBound) &&
+                                (ratio.isUpperBoundInclusive ? calculatedValue <= ratio.upperBound : calculatedValue < ratio.upperBound);
+                        } else if (ratio.lowerBound !== null) {
+                            isIdeal = ratio.isLowerBoundInclusive ? calculatedValue >= ratio.lowerBound : calculatedValue > ratio.lowerBound;
+                        } else if (ratio.upperBound !== null) {
+                            isIdeal = ratio.isUpperBoundInclusive ? calculatedValue <= ratio.upperBound : calculatedValue < ratio.upperBound;
+                        }
+                        status = isIdeal ? 'IDEAL' : 'NOT_IDEAL';
+                    }
                 }
 
 
                 try {
                     const result = await prisma.evaluationResult.upsert({
                         where: {
-                            uniq_result_ratio_period: {
+                            uniq_user_eval_result_dates: { // Ensure this matches your Prisma schema unique constraint
+                                userId: user.id,
                                 ratioId: ratio.id,
-                                periodId: period.id,
+                                startDate: currentMonthEvalStart,
+                                endDate: currentMonthEvalEnd,
                             },
                         },
                         update: {
                             value: calculatedValue,
-                            calculatedAt: new Date(), // Update calculation time
+                            status: status,
+                            calculatedAt: new Date(),
                         },
                         create: {
+                            userId: user.id,
+                            startDate: currentMonthEvalStart,
+                            endDate: currentMonthEvalEnd,
                             ratioId: ratio.id,
-                            periodId: period.id,
                             value: calculatedValue,
+                            status: status, // Set based on calculation or default to INCOMPLETE
                             calculatedAt: new Date(),
-                            status: 'INCOMPLETE', // or any other valid status
-                            userId: user.id, // assuming you have the user ID available
                         },
                     });
-                    console.log(`        Upserted EvaluationResult for Ratio "${ratio.title}": Value = ${result.value.toFixed(2)}`);
+                    console.log(`        Upserted EvaluationResult for Ratio "${ratio.title}": Value = ${result.value.toFixed(2)}, Status: ${result.status}`);
                 } catch (error) {
-                    console.error(`        Failed to upsert EvaluationResult for Ratio "${ratio.title}", Period "${period.id}":`, error);
+                    console.error(`        Failed to upsert EvaluationResult for Ratio "${ratio.title}", Period "${currentMonthEvalStart}-${currentMonthEvalEnd}":`, error);
                 }
             }
         }

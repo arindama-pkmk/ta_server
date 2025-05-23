@@ -24,10 +24,6 @@ import { TransactionBudgetingRepository } from '../repositories/transactionBudge
 import { TransactionBudgetingService } from '../services/transactionBudgetingService';
 import { TransactionBudgetingController } from '../controllers/transactionBudgetingController';
 import { TransactionBudgetingRoutes } from '../routes/transactionBudgetingRoutes';
-import { PeriodRepository } from '../repositories/periodRepository';
-import { PeriodService } from '../services/periodService';
-import { PeriodController } from '../controllers/periodController';
-import { PeriodRoutes } from '../routes/periodRoutes';
 // Import CategoryHierarchy components
 import { CategoryHierarchyRepository } from '../repositories/categoryHierarchyRepository'; // Should already be there
 import { CategoryHierarchyService } from '../services/categoryHierarchyService';       // Should already be there
@@ -64,11 +60,6 @@ container.bind<OtpVerificationController>(TYPES.OtpVerificationController).to(Ot
 
 container.bind<ClassifierController>(TYPES.ClassifierController).to(ClassifierController);
 container.bind<ClassifierService>(TYPES.ClassifierService).to(ClassifierService);
-
-container.bind<PeriodRepository>(TYPES.PeriodRepository).to(PeriodRepository);
-container.bind<PeriodService>(TYPES.PeriodService).to(PeriodService);
-container.bind<PeriodController>(TYPES.PeriodController).to(PeriodController);
-container.bind<PeriodRoutes>(TYPES.PeriodRoutes).to(PeriodRoutes);
 
 // Bind CategoryHierarchy components
 container.bind<CategoryHierarchyRepository>(TYPES.CategoryHierarchyRepository).to(CategoryHierarchyRepository);

@@ -3,23 +3,28 @@ import { PrismaClient, EvaluationResult, Prisma } from '@prisma/client';
 import { inject, injectable } from 'inversify';
 import { TYPES } from '../utils/types';
 
-// DTO for EvaluationResult Creation - typically all fields are set by the service after calculation
-export type CreateEvaluationResultDto = Omit<EvaluationResult, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt' | 'ratio' | 'period' | 'user'>;
+export type CreateEvaluationResultDto = Omit<EvaluationResult, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt' | 'ratio' | 'user'>;
+// Note: userId, startDate, endDate, ratioId, value, status, calculatedAt are expected in the DTO
 
-// DTO for Update - usually only value and status might be updated if re-calculated
 export type UpdateEvaluationResultDto = Partial<Pick<EvaluationResult, 'value' | 'status' | 'calculatedAt'>>;
 
-// Define the include object for populated EvaluationResults
 const evaluationResultIncludeDefault = {
-    ratio: true,
-    period: true,
-    user: true, // Assuming direct userId link and you want user details sometimes
+    ratio: true, // Include details of the Ratio being evaluated
+    // user: false, // Usually not needed for a list of results
 } satisfies Prisma.EvaluationResultInclude;
 
-// Prisma's way of getting the type with includes
 export type PopulatedEvaluationResult = Prisma.EvaluationResultGetPayload<{
     include: typeof evaluationResultIncludeDefault
 }>;
+
+// Define the type for the arguments more precisely
+type FindAllArgs = Omit<Prisma.EvaluationResultFindManyArgs, 'where' | 'include'> & {
+    where?: Prisma.EvaluationResultWhereInput; // Prisma's where type
+    // These are for custom filtering logic, not direct Prisma args
+    customStartDate?: Date;
+    customEndDate?: Date;
+};
+
 
 @injectable()
 export class TransactionEvaluationRepository {
@@ -30,14 +35,12 @@ export class TransactionEvaluationRepository {
         this.prisma = prisma;
     }
 
-    // create method not typically called directly with a DTO for EvaluationResult,
-    // as it's a result of calculation. Service layer will use upsert or create with specific fields.
-    // However, providing a standard create if ever needed:
     async create(data: CreateEvaluationResultDto): Promise<PopulatedEvaluationResult> {
         return this.prisma.evaluationResult.create({
             data: {
                 userId: data.userId,
-                periodId: data.periodId,
+                startDate: data.startDate,
+                endDate: data.endDate,
                 ratioId: data.ratioId,
                 value: data.value,
                 status: data.status,
@@ -49,50 +52,59 @@ export class TransactionEvaluationRepository {
 
     async findById(id: string): Promise<PopulatedEvaluationResult | null> {
         return this.prisma.evaluationResult.findFirst({
-            where: {
-                id,
-                deletedAt: null,
-            },
+            where: { id, deletedAt: null },
             include: this.defaultInclude,
         });
     }
 
-    // To find an existing result for a specific user, ratio, and period (for upserting)
-    async findExisting(userId: string, periodId: string, ratioId: string): Promise<EvaluationResult | null> {
-        return this.prisma.evaluationResult.findFirst({ // Changed from findUnique
+    async findExisting(userId: string, startDate: Date, endDate: Date, ratioId: string): Promise<PopulatedEvaluationResult | null> {
+        return this.prisma.evaluationResult.findFirst({
             where: {
-                ratioId: ratioId,
-                periodId: periodId,
-                userId: userId, // Now this is fine with findFirst
+                userId,
+                startDate,
+                endDate,
+                ratioId,
                 deletedAt: null,
-            }
+            },
+            include: this.defaultInclude // Added include
         });
     }
 
-    async findAllByUserId(
+    async findAllByUserIdAndOptionalDateRange(
         userId: string,
-        args?: Omit<Prisma.EvaluationResultFindManyArgs, 'where' | 'include'> & { where?: Prisma.EvaluationResultWhereInput }
+        args?: FindAllArgs // Use the more precise FindAllArgs
     ): Promise<PopulatedEvaluationResult[]> {
-        const queryArgs: Prisma.EvaluationResultFindManyArgs = {
-            ...args,
-            where: {
-                ...(args?.where || {}),
-                userId, // Direct user scoping
-                deletedAt: null,
-            },
-            include: {
-                ratio: true,
-                period: true,
-                user: true,
-            },
-            orderBy: args?.orderBy || { calculatedAt: 'desc' },
+        // Separate Prisma-compatible args from custom filter args
+        const { customStartDate, customEndDate, where: argsWhere, ...prismaCompatibleArgs } = args ?? {};
+
+        const whereClause: Prisma.EvaluationResultWhereInput = {
+            userId,
+            deletedAt: null,
+            ...(argsWhere || {}), // Spread where from input args
         };
-        return this.prisma.evaluationResult.findMany({ ...queryArgs, include: this.defaultInclude });
+
+        if (customStartDate) {
+            whereClause.startDate = { ...(whereClause.startDate as Prisma.DateTimeFilter || {}), gte: customStartDate };
+        }
+        if (customEndDate) {
+            whereClause.endDate = { ...(whereClause.endDate as Prisma.DateTimeFilter || {}), lte: customEndDate };
+        }
+        // If you need to find results FOR a specific range (exact match on startDate and endDate in whereClause):
+        // if (customStartDate) whereClause.startDate = customStartDate;
+        // if (customEndDate) whereClause.endDate = customEndDate;
+
+
+        return this.prisma.evaluationResult.findMany({
+            ...prismaCompatibleArgs, // Spread orderBy, skip, take etc. from prismaCompatibleArgs
+            where: whereClause,
+            include: this.defaultInclude,
+            orderBy: args?.orderBy || { calculatedAt: 'desc' }, // Still access original args for orderBy
+        });
     }
 
     async update(id: string, data: UpdateEvaluationResultDto): Promise<PopulatedEvaluationResult> {
         return this.prisma.evaluationResult.update({
-            where: { id }, // Service ensures ownership
+            where: { id },
             data,
             include: this.defaultInclude,
         });
@@ -100,28 +112,39 @@ export class TransactionEvaluationRepository {
 
     async upsert(
         userId: string,
-        periodId: string,
+        startDate: Date,
+        endDate: Date,
         ratioId: string,
         updateData: Pick<EvaluationResult, 'value' | 'status' | 'calculatedAt'>,
-        createData: Omit<EvaluationResult, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt' | 'ratio' | 'period' | 'user'>
+        // Ensure createDataForUpsert has all necessary fields for EvaluationResult excluding those set by Prisma or relations
+        createDataForUpsert: {
+            value: number;
+            status: EvaluationResult['status']; // Use Prisma's enum type
+            calculatedAt?: Date;
+        }
     ): Promise<PopulatedEvaluationResult> {
         return this.prisma.evaluationResult.upsert({
             where: {
-                uniq_result_ratio_period: {
-                    ratioId: ratioId,
-                    periodId: periodId,
+                uniq_user_eval_result_dates: {
+                    userId,
+                    ratioId,
+                    startDate,
+                    endDate,
                 },
-                // It's important the unique constraint effectively scopes by user if userId isn't part of it.
-                // Since uniq_result_ratio_period does not include userId, we must trust that
-                // periodId itself is unique to a user or that the service layer correctly uses `findExisting` with userId.
-                // For safety, if the service layer calls this, it should have already confirmed ownership of the period.
             },
             update: updateData,
-            create: createData,
+            create: {
+                userId,
+                startDate,
+                endDate,
+                ratioId,
+                value: createDataForUpsert.value,
+                status: createDataForUpsert.status,
+                calculatedAt: createDataForUpsert.calculatedAt || new Date(),
+            },
             include: this.defaultInclude,
         });
     }
-
 
     async softDelete(id: string): Promise<PopulatedEvaluationResult> {
         return this.prisma.evaluationResult.update({

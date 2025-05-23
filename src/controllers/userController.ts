@@ -91,6 +91,15 @@ export class UserController {
         }
     }
 
+    async getOccupations(_req: Request, res: Response, next: NextFunction): Promise<void> {
+        try {
+            const occupations = await this.userService.getAllOccupations();
+            res.status(200).json({ success: true, data: occupations }); // Wrap in data for consistency
+        } catch (error) {
+            next(error);
+        }
+    }
+
     // Admin/Generic CRUD (if needed, these would require admin role authorization)
     // Example:
     // async adminGetAllUsers(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {

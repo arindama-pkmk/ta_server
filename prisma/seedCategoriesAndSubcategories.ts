@@ -80,15 +80,15 @@ const originalSeedData: SeedRow[] = [
 
 // Subcategory lists from your Flutter evaluation_calculator.dart
 const subcategoryDefinitionsForRatios = {
-    liquidCats: ['Uang Tunai', 'Uang Rekening Bank', 'Uang E-Wallet', 'Dividen', 'Bunga', 'Untung Modal'],
-    nonLiquidCats: ['Piutang', 'Rumah', 'Apartemen', 'Ruko', 'Gudang', 'Kios', 'Properti Sewa', 'Kendaraan', 'Elektronik', 'Furnitur', 'Saham', 'Obligasi', 'Reksadana', 'Kripto', 'Koleksi', 'Perhiasan'],
-    liabilitiesCats: ['Saldo Kartu Kredit', 'Tagihan', 'Cicilan', 'Pajak', 'Pinjaman', 'Pinjaman Properti'],
-    expenseCats: ['Tabungan', 'Makanan', 'Minuman', 'Hadiah', 'Donasi', 'Kendaraan Pribadi', 'Transportasi Umum', 'Bahan bakar', 'Kesehatan', 'Medis', 'Perawatan Pribadi', 'Pakaian', 'Hiburan', 'Rekreasi', 'Pendidikan', 'Pembelajaran', 'Bayar pinjaman', 'Bayar pajak', 'Bayar asuransi', 'Perumahan', 'Kebutuhan Sehari-hari'],
-    incomeCats: ['Gaji', 'Upah', 'Bonus', 'Commission', 'Dividen', 'Bunga', 'Untung Modal', 'Freelance'],
-  };
-  
+  liquidCats: ['Uang Tunai', 'Uang Rekening Bank', 'Uang E-Wallet', 'Dividen', 'Bunga', 'Untung Modal'],
+  nonLiquidCats: ['Piutang', 'Rumah', 'Apartemen', 'Ruko', 'Gudang', 'Kios', 'Properti Sewa', 'Kendaraan', 'Elektronik', 'Furnitur', 'Saham', 'Obligasi', 'Reksadana', 'Kripto', 'Koleksi', 'Perhiasan'],
+  liabilitiesCats: ['Saldo Kartu Kredit', 'Tagihan', 'Cicilan', 'Pajak', 'Pinjaman', 'Pinjaman Properti'],
+  expenseCats: ['Tabungan', 'Makanan', 'Minuman', 'Hadiah', 'Donasi', 'Kendaraan Pribadi', 'Transportasi Umum', 'Bahan bakar', 'Kesehatan', 'Medis', 'Perawatan Pribadi', 'Pakaian', 'Hiburan', 'Rekreasi', 'Pendidikan', 'Pembelajaran', 'Bayar pinjaman', 'Bayar pajak', 'Bayar asuransi', 'Perumahan', 'Kebutuhan Sehari-hari'],
+  incomeCats: ['Gaji', 'Upah', 'Bonus', 'Commission', 'Dividen', 'Bunga', 'Untung Modal', 'Freelance'],
+};
+
 const allRatioSubcategoryNames = [
-    ...new Set(Object.values(subcategoryDefinitionsForRatios).flat())
+  ...new Set(Object.values(subcategoryDefinitionsForRatios).flat())
 ];
 
 // Combine original data with any missing subcategories from ratio definitions
@@ -96,30 +96,30 @@ const finalSeedData: SeedRow[] = [...originalSeedData];
 const existingSeedSubcategoryNames = new Set(originalSeedData.map(d => d.subcategoryName));
 
 allRatioSubcategoryNames.forEach(ratioSubName => {
-    if (!existingSeedSubcategoryNames.has(ratioSubName)) {
-        console.warn(`Subcategory "${ratioSubName}" (from ratio definitions) is not in original seed data. It will NOT be added automatically. Please ensure all subcategories needed for ratios are in the originalSeedData array with correct AccountType and Category.`);
-        // Decide on a strategy:
-        // 1. Warn and skip (current implementation)
-        // 2. Try to auto-assign (more complex, error-prone if names are ambiguous)
-        // Example of auto-assigning to a generic "Lainnya" category if desired:
-        /*
-        if (subcategoryDefinitionsForRatios.incomeCats.includes(ratioSubName)) {
-            finalSeedData.push({ accountType: "Pemasukan", categoryName: "Pendapatan Lainnya", subcategoryName: ratioSubName });
-        } else if (subcategoryDefinitionsForRatios.expenseCats.includes(ratioSubName)) {
-            finalSeedData.push({ accountType: "Pengeluaran", categoryName: "Pengeluaran Lainnya", subcategoryName: ratioSubName });
-        } else if (subcategoryDefinitionsForRatios.liabilitiesCats.includes(ratioSubName)) {
-            finalSeedData.push({ accountType: "Liabilitas", categoryName: "Utang Lainnya", subcategoryName: ratioSubName });
-        } else { // Assume Aset if not in others
-            finalSeedData.push({ accountType: "Aset", categoryName: "Aset Lainnya", subcategoryName: ratioSubName });
-        }
-        console.log(`Added missing ratio subcategory: ${ratioSubName} to a default category.`);
-        */
+  if (!existingSeedSubcategoryNames.has(ratioSubName)) {
+    console.warn(`Subcategory "${ratioSubName}" (from ratio definitions) is not in original seed data. It will NOT be added automatically. Please ensure all subcategories needed for ratios are in the originalSeedData array with correct AccountType and Category.`);
+    // Decide on a strategy:
+    // 1. Warn and skip (current implementation)
+    // 2. Try to auto-assign (more complex, error-prone if names are ambiguous)
+    // Example of auto-assigning to a generic "Lainnya" category if desired:
+    /*
+    if (subcategoryDefinitionsForRatios.incomeCats.includes(ratioSubName)) {
+        finalSeedData.push({ accountType: "Pemasukan", categoryName: "Pendapatan Lainnya", subcategoryName: ratioSubName });
+    } else if (subcategoryDefinitionsForRatios.expenseCats.includes(ratioSubName)) {
+        finalSeedData.push({ accountType: "Pengeluaran", categoryName: "Pengeluaran Lainnya", subcategoryName: ratioSubName });
+    } else if (subcategoryDefinitionsForRatios.liabilitiesCats.includes(ratioSubName)) {
+        finalSeedData.push({ accountType: "Liabilitas", categoryName: "Utang Lainnya", subcategoryName: ratioSubName });
+    } else { // Assume Aset if not in others
+        finalSeedData.push({ accountType: "Aset", categoryName: "Aset Lainnya", subcategoryName: ratioSubName });
     }
+    console.log(`Added missing ratio subcategory: ${ratioSubName} to a default category.`);
+    */
+  }
 });
 
 // Deduplicate finalSeedData (though originalSeedData should be unique by structure)
-const uniqueFinalSeedData = Array.from(new Map(finalSeedData.map(item => 
-    [`${item.accountType}-${item.categoryName}-${item.subcategoryName}`, item]
+const uniqueFinalSeedData = Array.from(new Map(finalSeedData.map(item =>
+  [`${item.accountType}-${item.categoryName}-${item.subcategoryName}`, item]
 )).values());
 
 
@@ -149,7 +149,7 @@ async function main() {
     if (!cat) {
       const newCat = await prisma.category.upsert({
         where: {
-          uniq_accountType_name: {
+          uniq_category_account_type: {
             accountTypeId: at.id,
             name: row.categoryName,
           },
@@ -171,7 +171,7 @@ async function main() {
     if (!subcategoryCache.has(subcatKey)) { // Check local cache before hitting DB
       const newSubcat = await prisma.subcategory.upsert({
         where: {
-          uniq_category_subcategory: {
+          uniq_subcategory_category: {
             categoryId: cat.id,
             name: row.subcategoryName,
           },
@@ -181,7 +181,7 @@ async function main() {
           categoryId: cat.id,
           name: row.subcategoryName,
         },
-        select: {id: true, name: true, categoryId: true }
+        select: { id: true, name: true, categoryId: true }
       });
       subcategoryCache.set(subcatKey, newSubcat);
       // console.log(`Upserted Subcategory: ${row.subcategoryName} under ${row.categoryName} (ID: ${newSubcat.id})`);

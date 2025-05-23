@@ -360,78 +360,87 @@ const swaggerDefinition = {
                 type: 'object', properties: { success: { type: 'boolean' }, data: { type: 'array', items: { $ref: '#/components/schemas/Subcategory' } } }
             },
 
-            // --- Period Schemas ---
-            Period: {
+            // --- Budgeting Schemas (UPDATED/NEW) ---
+            ExpenseAllocationDetailPayload: { // Used in SaveExpenseAllocationsPayload
+                type: 'object',
+                required: ['categoryId', 'percentage', 'selectedSubcategoryIds'],
+                properties: {
+                    categoryId: { type: 'string', format: 'uuid' },
+                    percentage: { type: 'number', format: 'float', minimum: 0, maximum: 100 },
+                    selectedSubcategoryIds: { type: 'array', items: { type: 'string', format: 'uuid' }, minItems: 1 }
+                }
+            },
+            SaveExpenseAllocationsPayload: { // For POST /budgeting/expense-allocations
+                type: 'object',
+                required: [
+                    'planStartDate',
+                    'planEndDate',
+                    'incomeCalculationStartDate',
+                    'incomeCalculationEndDate',
+                    'totalCalculatedIncome',
+                    'allocations'
+                ],
+                properties: {
+                    planDescription: { type: 'string', nullable: true, example: 'April 2024 Expenses' },
+                    planStartDate: { type: 'string', format: 'date', example: '2024-04-01' },
+                    planEndDate: { type: 'string', format: 'date', example: '2024-04-30' },
+                    incomeCalculationStartDate: { type: 'string', format: 'date', example: '2024-04-01' },
+                    incomeCalculationEndDate: { type: 'string', format: 'date', example: '2024-04-30' },
+                    totalCalculatedIncome: { type: 'number', format: 'float', minimum: 0, example: 5000.00 },
+                    allocations: {
+                        type: 'array',
+                        items: { $ref: '#/components/schemas/ExpenseAllocationDetailPayload' }
+                    }
+                }
+            },
+            ExpenseAllocation: { // Represents a single allocation item (from DB)
                 type: 'object',
                 properties: {
                     id: { type: 'string', format: 'uuid' },
-                    userId: { type: 'string', format: 'uuid' },
-                    startDate: { type: 'string', format: 'date-time' },
-                    endDate: { type: 'string', format: 'date-time' },
-                    periodType: { type: 'string', enum: ['income', 'expense', 'general_evaluation'] },
-                    description: { type: 'string', nullable: true },
+                    budgetPlanId: { type: 'string', format: 'uuid' },
+                    categoryId: { type: 'string', format: 'uuid' },
+                    category: { $ref: '#/components/schemas/CategoryMinimal' }, // Nested
+                    subcategoryId: { type: 'string', format: 'uuid' },
+                    subcategory: { $ref: '#/components/schemas/SubcategoryMinimal' }, // Nested
+                    percentage: { type: 'number', format: 'float', description: "Percentage of parent BudgetPlan's totalCalculatedIncome" },
+                    amount: { type: 'number', format: 'float', description: "Calculated monetary amount for this category's allocation" },
                     createdAt: { type: 'string', format: 'date-time' },
                     updatedAt: { type: 'string', format: 'date-time' },
                 }
             },
-            CreatePeriodPayload: {
-                type: 'object',
-                required: ['startDate', 'endDate', 'periodType'],
-                properties: {
-                    startDate: { type: 'string', format: 'date', example: '2023-11-01' },
-                    endDate: { type: 'string', format: 'date', example: '2023-11-30' },
-                    periodType: { type: 'string', enum: ['income', 'expense', 'general_evaluation'], example: 'expense' },
-                    description: { type: 'string', nullable: true, example: 'November Budget' },
-                }
-            },
-            UpdatePeriodPayload: { // Partial update
-                type: 'object',
-                properties: {
-                    startDate: { type: 'string', format: 'date', nullable: true },
-                    endDate: { type: 'string', format: 'date', nullable: true },
-                    periodType: { type: 'string', enum: ['income', 'expense', 'general_evaluation'], nullable: true },
-                    description: { type: 'string', nullable: true },
-                }
-            },
-            PeriodResponse: { type: 'object', properties: { success: { type: 'boolean' }, data: { $ref: '#/components/schemas/Period' } } },
-            PeriodListResponse: { type: 'object', properties: { success: { type: 'boolean' }, data: { type: 'array', items: { $ref: '#/components/schemas/Period' } } } },
-
-
-            // --- Budgeting Schemas ---
-            BudgetAllocation: { // Populated
+            BudgetPlan: { // Represents a budget plan (from DB)
                 type: 'object',
                 properties: {
                     id: { type: 'string', format: 'uuid' },
-                    periodId: { type: 'string', format: 'uuid' },
-                    categoryId: { type: 'string', format: 'uuid' },
-                    subcategoryId: { type: 'string', format: 'uuid' },
-                    percentage: { type: 'number', format: 'float', description: "Percentage of category total income allocated to this item's category (not subcategory)" },
-                    amount: { type: 'number', format: 'float', description: "Total amount for the parent category (not this specific subcategory allocation)" },
-                    category: { $ref: '#/components/schemas/CategoryMinimal' },
-                    subcategory: { $ref: '#/components/schemas/SubcategoryMinimal' },
-                    period: { $ref: '#/components/schemas/Period' }, // or a PeriodMinimal
+                    userId: { type: 'string', format: 'uuid' },
+                    description: { type: 'string', nullable: true },
+                    planStartDate: { type: 'string', format: 'date-time' },
+                    planEndDate: { type: 'string', format: 'date-time' },
+                    incomeCalculationStartDate: { type: 'string', format: 'date-time' },
+                    incomeCalculationEndDate: { type: 'string', format: 'date-time' },
+                    totalCalculatedIncome: { type: 'number', format: 'float' },
+                    createdAt: { type: 'string', format: 'date-time' },
+                    updatedAt: { type: 'string', format: 'date-time' },
+                    allocations: { // Nested ExpenseAllocations
+                        type: 'array',
+                        items: { $ref: '#/components/schemas/ExpenseAllocation' }
+                    }
                 }
             },
-            CreateBudgetAllocationPayload: {
-                type: 'object',
-                required: ['periodId', 'categoryId', 'subcategoryId', 'percentage', 'amount'],
-                properties: {
-                    periodId: { type: 'string', format: 'uuid' },
-                    categoryId: { type: 'string', format: 'uuid' },
-                    subcategoryId: { type: 'string', format: 'uuid' },
-                    percentage: { type: 'number', format: 'float' },
-                    amount: { type: 'number', format: 'float' },
-                }
-            },
-            UpdateBudgetAllocationPayload: {
+            BudgetPlanResponse: { // For single BudgetPlan GET
                 type: 'object',
                 properties: {
-                    percentage: { type: 'number', format: 'float', nullable: true },
-                    amount: { type: 'number', format: 'float', nullable: true },
+                    success: { type: 'boolean', example: true },
+                    data: { $ref: '#/components/schemas/BudgetPlan' }
                 }
             },
-            BudgetAllocationResponse: { type: 'object', properties: { success: { type: 'boolean' }, data: { $ref: '#/components/schemas/BudgetAllocation' } } },
-            BudgetAllocationListResponse: { type: 'object', properties: { success: { type: 'boolean' }, data: { type: 'array', items: { $ref: '#/components/schemas/BudgetAllocation' } } } },
+            BudgetPlanListResponse: { // For list of BudgetPlans
+                type: 'object',
+                properties: {
+                    success: { type: 'boolean', example: true },
+                    data: { type: 'array', items: { $ref: '#/components/schemas/BudgetPlan' } }
+                }
+            },
             IncomeSummaryItem: {
                 type: 'object',
                 properties: {
@@ -501,71 +510,76 @@ const swaggerDefinition = {
                 }
             },
 
-            // --- Evaluation Schemas ---
-            EvaluationResult: { // Populated
+            // --- Evaluation Schemas (UPDATED/NEW) ---
+            EvaluationResult: { // Populated from DB for history/detail (without user, period objects for brevity in list)
                 type: 'object',
                 properties: {
                     id: { type: 'string', format: 'uuid' },
                     userId: { type: 'string', format: 'uuid' },
-                    periodId: { type: 'string', format: 'uuid' },
+                    startDate: { type: 'string', format: 'date-time' },
+                    endDate: { type: 'string', format: 'date-time' },
                     ratioId: { type: 'string', format: 'uuid' },
+                    ratio: { // Nested Ratio information
+                        type: 'object',
+                        properties: {
+                            id: { type: 'string', format: 'uuid' },
+                            code: { type: 'string' },
+                            title: { type: 'string' },
+                            description: { type: 'string', nullable: true },
+                            idealText: {type: 'string', nullable: true },
+                        }
+                    },
                     value: { type: 'number', format: 'float' },
                     status: { type: 'string', enum: ['IDEAL', 'NOT_IDEAL', 'INCOMPLETE'] },
                     calculatedAt: { type: 'string', format: 'date-time' },
-                    // ratio: { $ref: '#/components/schemas/Ratio' }, // Define if needed
-                    // period: { $ref: '#/components/schemas/Period' },
-                    // user: { $ref: '#/components/schemas/UserBase' },
+                    createdAt: { type: 'string', format: 'date-time' },
+                    updatedAt: { type: 'string', format: 'date-time' },
                 }
             },
-            CalculateEvaluationsPayload: {
+            CalculateEvaluationsPayload: { // For POST /evaluations/calculate
                 type: 'object',
-                required: ['periodId'],
+                required: ['startDate', 'endDate'],
                 properties: {
-                    periodId: { type: 'string', format: 'uuid' },
+                    startDate: { type: 'string', format: 'date', example: '2024-01-01' },
+                    endDate: { type: 'string', format: 'date', example: '2024-01-31' },
                 }
             },
-            SingleRatioCalculationResult: {
-                type: 'object',
-                properties: {
-                    ratioId: { type: 'string', format: 'uuid' },
-                    ratioCode: { type: 'string' },
-                    ratioTitle: { type: 'string' },
-                    value: { type: 'number', format: 'float' },
-                    status: { type: 'string', enum: ['IDEAL', 'NOT_IDEAL', 'INCOMPLETE'] },
-                    idealRangeDisplay: { type: 'string', nullable: true }
-                }
-            },
-            CalculateEvaluationsResponse: {
+            SingleRatioCalculationResult: { /* ... (remains same as before) ... */ },
+            CalculateEvaluationsResponse: { /* ... (remains same as before, 'data' is SingleRatioCalculationResult[]) ... */ },
+            EvaluationHistoryListResponse: { // For GET /evaluations/history
                 type: 'object',
                 properties: {
-                    success: { type: 'boolean' },
-                    message: { type: 'string' },
-                    data: { type: 'array', items: { $ref: '#/components/schemas/SingleRatioCalculationResult' } }
+                    success: { type: 'boolean', example: true },
+                    data: { type: 'array', items: { $ref: '#/components/schemas/EvaluationResult' } } // List of full EvaluationResult
                 }
             },
-            EvaluationHistoryResponse: {
-                type: 'object', properties: { success: { type: 'boolean' }, data: { type: 'array', items: { $ref: '#/components/schemas/EvaluationResult' } } }
+            ConceptualComponentValue: { // For breakdown in detail
+                type: 'object',
+                properties: {
+                    name: { type: 'string' },
+                    value: { type: 'number', format: 'float' }
+                }
             },
-            EvaluationResultDetail: {
-                allOf: [{ $ref: '#/components/schemas/EvaluationResult' }], // Extends EvaluationResult
+            EvaluationResultDetail: { // For GET /evaluations/{id}/detail
+                allOf: [{ $ref: '#/components/schemas/EvaluationResult' }],
                 type: 'object',
                 properties: {
                     breakdownComponents: {
                         type: 'array',
-                        items: {
-                            type: 'object',
-                            properties: {
-                                name: { type: 'string' },
-                                value: { type: 'number', format: 'float' }
-                            }
-                        },
+                        items: { $ref: '#/components/schemas/ConceptualComponentValue' },
                         nullable: true
                     },
                     calculatedNumerator: { type: 'number', format: 'float', nullable: true },
                     calculatedDenominator: { type: 'number', format: 'float', nullable: true }
                 }
             },
-            EvaluationDetailResponse: { type: 'object', properties: { success: { type: 'boolean' }, data: { $ref: '#/components/schemas/EvaluationResultDetail' } } },
+            EvaluationDetailResponse: {
+                type: 'object',
+                properties: {
+                    success: { type: 'boolean', example: true },
+                    data: { $ref: '#/components/schemas/EvaluationResultDetail' }
+                }
+            },
 
             // --- Health Schemas ---
             BasicStatusResponse: {

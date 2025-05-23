@@ -163,51 +163,61 @@ export class UserService {
     // Soft delete user and potentially related data (cascading logic)
     async deleteUser(userIdToDelete: string, currentUserId: string): Promise<void> {
         if (userIdToDelete !== currentUserId) {
-            // Optional: Add admin role check here if admins can delete other users
+            // TODO: Implement admin role check here if admins should be able to delete other users
             throw new ForbiddenError("Users can only delete their own accounts.");
         }
 
         const user = await this.userRepository.findById(userIdToDelete);
-        if (!user) {
+        if (!user || user.deletedAt) { // Check if already soft-deleted
             throw new NotFoundError("User not found or already deleted.");
         }
 
-        // Use Prisma transaction for atomic cascading soft delete
         await prisma.$transaction(async (tx) => {
-            // Soft delete related entities first, using the transactional client 'tx'
+            // 1. Soft delete Transactions
             await tx.transaction.updateMany({
                 where: { userId: userIdToDelete, deletedAt: null },
                 data: { deletedAt: new Date() }
             });
 
-            const userPeriods = await tx.period.findMany({
+            // 2. Soft delete BudgetPlans (this will cascade to ExpenseAllocations if schema is set up for it,
+            //    otherwise, soft delete ExpenseAllocations explicitly first)
+            //    Let's assume onDelete: Cascade on BudgetPlan for ExpenseAllocation is NOT soft delete aware
+            //    So we need to do it manually.
+
+            // Find all BudgetPlans for the user
+            const userBudgetPlans = await tx.budgetPlan.findMany({
                 where: { userId: userIdToDelete, deletedAt: null },
                 select: { id: true }
             });
-            const periodIds = userPeriods.map(p => p.id);
+            const budgetPlanIds = userBudgetPlans.map(bp => bp.id);
 
-            if (periodIds.length > 0) {
-                await tx.budgetAllocation.updateMany({
-                    where: { periodId: { in: periodIds }, deletedAt: null },
-                    data: { deletedAt: new Date() }
-                });
-                await tx.evaluationResult.updateMany({
-                    where: { periodId: { in: periodIds }, /*userId: userIdToDelete,*/ deletedAt: null }, // userId on EvalResult
-                    data: { deletedAt: new Date() }
-                });
-                await tx.incomePeriod.updateMany({
-                    where: { periodId: { in: periodIds }, deletedAt: null },
+            if (budgetPlanIds.length > 0) {
+                // Soft delete ExpenseAllocations linked to these BudgetPlans
+                await tx.expenseAllocation.updateMany({
+                    where: { budgetPlanId: { in: budgetPlanIds }, deletedAt: null },
                     data: { deletedAt: new Date() }
                 });
             }
-
-            // Soft delete OTPs linked to this user (if user deletion implies OTP invalidation)
-            await tx.otpVerification.updateMany({
-                where: { userId: userIdToDelete, deletedAt: null }, // Assuming userId is on OtpVerification
+            // Now soft delete the BudgetPlans themselves
+            await tx.budgetPlan.updateMany({
+                where: { userId: userIdToDelete, deletedAt: null },
                 data: { deletedAt: new Date() }
             });
 
-            // Finally, soft delete the user record itself
+
+            // 3. Soft delete EvaluationResults
+            await tx.evaluationResult.updateMany({
+                where: { userId: userIdToDelete, deletedAt: null },
+                data: { deletedAt: new Date() }
+            });
+
+            // 4. Soft delete OTPs linked to this user
+            await tx.otpVerification.updateMany({
+                where: { userId: userIdToDelete, deletedAt: null },
+                data: { deletedAt: new Date() }
+            });
+
+            // 5. Finally, soft delete the user record itself
             await tx.user.update({
                 where: { id: userIdToDelete },
                 data: { deletedAt: new Date() },
@@ -219,5 +229,9 @@ export class UserService {
     // Simple findById for internal use or admin
     async findUserById(id: string): Promise<User | null> {
         return this.userRepository.findById(id, true); // Include occupation
+    }
+
+    async getAllOccupations(): Promise<Occupation[]> {
+        return this.userRepository.findAllOccupations();
     }
 }

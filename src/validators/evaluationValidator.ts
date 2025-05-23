@@ -1,18 +1,21 @@
 // src/validators/evaluationValidator.ts
 import { z } from 'zod';
 
-// For PSPEC 4.2: Requesting calculation for a period
 export const calculateEvaluationsSchema = z.object({
-    // periodId: z.string().uuid("Valid period ID is required"),
-    // ratioCodes: z.array(z.string()).optional(), // If you implement selective calculation
+    // periodId: z.string().uuid("Valid period ID is required"), // REMOVED
+    startDate: z.preprocess((arg) => { // ADDED
+        if (typeof arg === "string" || arg instanceof Date) return new Date(arg);
+        throw new Error("Invalid startDate format for evaluation");
+    }, z.date()),
+    endDate: z.preprocess((arg) => { // ADDED
+        if (typeof arg === "string" || arg instanceof Date) return new Date(arg);
+        throw new Error("Invalid endDate format for evaluation");
+    }, z.date()),
+    // ratioCodes: z.array(z.string()).optional(),
+}).refine(data => data.endDate >= data.startDate, { // ADDED top-level date validation
+    message: "End date cannot be before start date for evaluation",
+    path: ["endDate"],
 });
 
-// For creating/updating EvaluationResult if client sends pre-calculated value (less ideal)
-// If server calculates, this schema might not be needed for create.
-export const evaluationResultSchema = z.object({
-    periodId: z.string().uuid(),
-    ratioId: z.string().uuid(),
-    value: z.number(),
-    // status: z.nativeEnum(EvaluationStatus), // If status is sent by client
-    // userId is from token
-});
+// evaluationResultSchema might not be needed if client doesn't send pre-calculated values.
+// If it were used for creating an EvaluationResult, it would also need startDate/endDate.

@@ -22,7 +22,7 @@ export class OtpVerificationService {
         // await this.otpRepository.deleteMany({ where: { email: email } });
 
         const otp = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit OTP
-        const expiresAt = new Date(Date.now() + parseInt(loadEnvironmentVariable('OTP_EXPIRATION_TIME_MS'))); // e.g., 10 minutes in ms
+        const expiresAt = new Date(Date.now() + parseInt(loadEnvironmentVariable('OTP_EXPIRATION_TIME'))); // e.g., 10 minutes in ms
 
         const createData: any = {
             email,

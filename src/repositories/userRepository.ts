@@ -133,4 +133,11 @@ export class UserRepository {
             include: { occupation: true }
         });
     }
+
+    async findAllOccupations(): Promise<Occupation[]> {
+        return this.prisma.occupation.findMany({
+            where: { deletedAt: null }, // Assuming occupations can be soft-deleted
+            orderBy: { name: 'asc' }
+        });
+    }
 }

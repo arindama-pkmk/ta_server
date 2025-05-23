@@ -32,7 +32,7 @@ export class TransactionEvaluationRoutes {
          *   post:
          *     tags:
          *       - Evaluations
-         *     summary: Calculate and store financial evaluations for a period
+         *     summary: Calculate and store financial evaluations for a given date range
          *     security:
          *       - bearerAuth: []
          *     requestBody:
@@ -40,7 +40,7 @@ export class TransactionEvaluationRoutes {
          *       content:
          *         application/json:
          *           schema:
-         *             $ref: '#/components/schemas/CalculateEvaluationsPayload'
+         *             $ref: '#/components/schemas/CalculateEvaluationsPayload' # This now expects startDate, endDate
          *     responses:
          *       '200':
          *         description: Evaluations calculated and stored successfully.
@@ -48,24 +48,12 @@ export class TransactionEvaluationRoutes {
          *           application/json:
          *             schema:
          *               $ref: '#/components/schemas/CalculateEvaluationsResponse'
-         *       '400':
-         *         description: Invalid input data (e.g., periodId missing or invalid period type).
-         *         content:
-         *           application/json:
-         *             schema:
-         *               oneOf:
-         *                 - $ref: '#/components/schemas/ErrorValidationResponse'
-         *                 - $ref: '#/components/schemas/ErrorResponse'
-         *       '401':
-         *         description: Unauthorized.
-         *       '404':
-         *         description: Period not found.
-         *       '500':
-         *         description: Internal error (e.g., no ratio definitions found).
+         *       '400': { description: "Invalid input (e.g., date range issues)" }
+         *       '401': { description: "Unauthorized" }
          */
         this.router.post('/calculate',
             validateZod(calculateEvaluationsSchema),
-            (req: Request, res: Response, next: NextFunction) => this.controller.calculateEvaluationsForPeriod(req as AuthRequest, res, next)
+            (req: Request, res: Response, next: NextFunction) => this.controller.calculateEvaluationsForDateRange(req as AuthRequest, res, next)
         );
 
         /**
@@ -80,25 +68,18 @@ export class TransactionEvaluationRoutes {
          *     parameters:
          *       - in: query
          *         name: startDate
-         *         schema:
-         *           type: string
-         *           format: date
-         *         description: Filter history for periods starting on or after this date.
+         *         schema: { type: string, format: date }
          *       - in: query
          *         name: endDate
-         *         schema:
-         *           type: string
-         *           format: date
-         *         description: Filter history for periods ending on or before this date.
+         *         schema: { type: string, format: date }
          *     responses:
          *       '200':
-         *         description: Evaluation history retrieved successfully.
+         *         description: Evaluation history (list of EvaluationResult).
          *         content:
          *           application/json:
          *             schema:
-         *               $ref: '#/components/schemas/EvaluationHistoryResponse'
-         *       '401':
-         *         description: Unauthorized.
+         *               $ref: '#/components/schemas/EvaluationHistoryListResponse'
+         *       '401': { description: "Unauthorized" }
          */
         this.router.get('/history',
             (req: Request, res: Response, next: NextFunction) => this.controller.getEvaluationHistory(req as AuthRequest, res, next)
@@ -110,32 +91,23 @@ export class TransactionEvaluationRoutes {
          *   get:
          *     tags:
          *       - Evaluations
-         *     summary: Get detailed information for a specific evaluation result
+         *     summary: Get detailed info for a specific evaluation result
          *     security:
          *       - bearerAuth: []
          *     parameters:
          *       - in: path
          *         name: evaluationResultId
          *         required: true
-         *         schema:
-         *           type: string
-         *           format: uuid
-         *         description: The ID of the EvaluationResult record.
+         *         schema: { type: string, format: uuid }
          *     responses:
          *       '200':
-         *         description: Evaluation detail retrieved successfully.
+         *         description: Evaluation detail.
          *         content:
          *           application/json:
          *             schema:
          *               $ref: '#/components/schemas/EvaluationDetailResponse'
-         *       '400':
-         *         description: Missing evaluationResultId parameter.
-         *       '401':
-         *         description: Unauthorized.
-         *       '404':
-         *         description: Evaluation result not found or access denied.
-         *       '500':
-         *         description: Evaluation result is missing critical relation data.
+         *       '401': { description: "Unauthorized" }
+         *       '404': { description: "Evaluation result not found" }
          */
         this.router.get('/:evaluationResultId/detail',
             (req: Request, res: Response, next: NextFunction) => this.controller.getEvaluationDetail(req as AuthRequest, res, next)

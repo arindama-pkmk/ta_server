@@ -2,13 +2,12 @@
 import { Response, NextFunction } from 'express';
 import {
     TransactionEvaluationService,
-    CalculateEvaluationClientDto, // Import DTOs
+    CalculateEvaluationClientDto,
 } from '../services/transactionEvaluationService';
 import { inject, injectable } from 'inversify';
 import { TYPES } from '../utils/types';
 import { AuthRequest } from '../types/auth';
 import { UnauthorizedError, BadRequestError } from '../utils/errorHandler';
-// Import Zod schemas from evaluationValidator.ts
 
 @injectable()
 export class TransactionEvaluationController {
@@ -18,16 +17,19 @@ export class TransactionEvaluationController {
         this.evaluationService = evaluationService;
     }
 
-    async calculateEvaluationsForPeriod(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+    async calculateEvaluationsForDateRange(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
         try {
             if (!req.user?.id) throw new UnauthorizedError('Authentication required.');
-            // Zod validation for req.body (e.g., calculateEvaluationsSchema) by middleware
-            const { periodId } = req.body as Pick<CalculateEvaluationClientDto, 'periodId'>;
-            if (!periodId) throw new BadRequestError("periodId is required in the request body.");
+            // Zod validation (calculateEvaluationsSchema) now expects startDate and endDate
+            const { startDate, endDate } = req.body as CalculateEvaluationClientDto; // DTO now has dates
+            if (!startDate || !endDate) { // Basic check, Zod handles detailed
+                throw new BadRequestError("startDate and endDate are required in the request body.");
+            }
 
-            const dto: CalculateEvaluationClientDto = { periodId }; // Only periodId is expected in DTO
-
-            const results = await this.evaluationService.calculateAndStoreEvaluations(dto, req.user.id); // Pass userId too
+            const results = await this.evaluationService.calculateAndStoreEvaluations(
+                { startDate: new Date(startDate), endDate: new Date(endDate) }, // Ensure they are Date objects
+                req.user.id
+            );
             res.status(200).json({ success: true, message: "Evaluations calculated and stored.", data: results });
         } catch (error) {
             next(error);
@@ -37,7 +39,7 @@ export class TransactionEvaluationController {
     async getEvaluationHistory(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
         try {
             if (!req.user?.id) throw new UnauthorizedError('Authentication required.');
-            const { startDate, endDate } = req.query;
+            const { startDate, endDate } = req.query; // These are optional filters for history
             const history = await this.evaluationService.getEvaluationHistoryForUser(
                 req.user.id,
                 startDate ? new Date(startDate as string) : undefined,
@@ -50,26 +52,15 @@ export class TransactionEvaluationController {
     }
 
     async getEvaluationDetail(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+        // This remains largely the same as it fetches a specific EvaluationResult by its ID
         try {
             if (!req.user?.id) throw new UnauthorizedError('Authentication required.');
-            const { evaluationResultId } = req.params; // Assuming ID of EvaluationResult record
-            if (!evaluationResultId) throw new BadRequestError("evaluationResultId is required in the request parameters.");
+            const { evaluationResultId } = req.params;
+            if (!evaluationResultId) throw new BadRequestError("evaluationResultId is required.");
             const detail = await this.evaluationService.getEvaluationDetailById(evaluationResultId, req.user.id);
             res.status(200).json({ success: true, data: detail });
         } catch (error) {
             next(error);
         }
     }
-
-    // If you need basic CRUD for EvaluationResult (less common, as they are calculated)
-    // async deleteEvaluationResult(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
-    //     try {
-    //         if (!req.user?.id) throw new UnauthorizedError('Authentication required.');
-    //         const { evaluationResultId } = req.params;
-    //         await this.evaluationService.deleteUserEvaluationResult(evaluationResultId, req.user.id); // New service method
-    //         res.status(204).send();
-    //     } catch (error) {
-    //         next(error);
-    //     }
-    // }
 }

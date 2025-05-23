@@ -13,7 +13,6 @@ import { TransactionEvaluationRoutes } from './transactionEvaluationRoutes';
 import { validateZod } from '../middlewares/validationMiddleware';
 import { requestOtpSchema, verifyOtpSchema } from '../validators/otpValidator';
 import { classifyTransactionTextSchema } from '../validators/classifyValidator';
-import { PeriodRoutes } from './periodRoutes';
 import { TransactionBudgetingRoutes } from './transactionBudgetingRoutes';
 import { CategoryHierarchyRoutes } from './categoryHierarchyRoutes'; // Added import
 
@@ -23,7 +22,6 @@ export class Routes {
     private readonly transactionRoutes: TransactionRoutes;
     private readonly transactionEvaluationRoutes: TransactionEvaluationRoutes;
     private readonly transactionBudgetingRoutes: TransactionBudgetingRoutes;
-    private readonly periodRoutes: PeriodRoutes;
     private readonly categoryHierarchyRoutes: CategoryHierarchyRoutes; // Added property
     private readonly healthController: HealthController;
     private readonly classifierController: ClassifierController;
@@ -34,7 +32,6 @@ export class Routes {
         @inject(TYPES.TransactionRoutes) transactionRoutes: TransactionRoutes,
         @inject(TYPES.TransactionEvaluationRoutes) transactionEvaluationRoutes: TransactionEvaluationRoutes,
         @inject(TYPES.TransactionBudgetingRoutes) transactionBudgetingRoutes: TransactionBudgetingRoutes,
-        @inject(TYPES.PeriodRoutes) periodRoutes: PeriodRoutes,
         @inject(TYPES.CategoryHierarchyRoutes) categoryHierarchyRoutes: CategoryHierarchyRoutes, // Added injection
         @inject(TYPES.HealthController) healthController: HealthController,
         @inject(TYPES.ClassifierController) classifierController: ClassifierController,
@@ -44,7 +41,6 @@ export class Routes {
         this.transactionRoutes = transactionRoutes;
         this.transactionEvaluationRoutes = transactionEvaluationRoutes;
         this.transactionBudgetingRoutes = transactionBudgetingRoutes;
-        this.periodRoutes = periodRoutes;
         this.categoryHierarchyRoutes = categoryHierarchyRoutes; // Added assignment
         this.healthController = healthController;
         this.classifierController = classifierController;
@@ -267,7 +263,6 @@ export class Routes {
         );
 
         // Mount other routes
-        app.use(`${basePath}/periods`, this.periodRoutes.getRouter());
         app.use(`${basePath}/users`, this.userRoutes.getRouter());
         app.use(`${basePath}/transactions`, this.transactionRoutes.getRouter());
         app.use(`${basePath}/budgeting`, this.transactionBudgetingRoutes.getRouter());

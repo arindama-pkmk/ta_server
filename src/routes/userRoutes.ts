@@ -255,5 +255,9 @@ export class UserRoutes {
             authenticate,
             (req: Request, res: Response, next: NextFunction) => this.userController.deleteCurrentUserAccount(req as AuthRequest, res, next)
         );
+
+        this.router.get('/occupations',
+            (req: Request, res: Response, next: NextFunction) => this.userController.getOccupations(req, res, next)
+        );
     }
 }

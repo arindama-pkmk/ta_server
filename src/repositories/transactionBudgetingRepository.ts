@@ -1,146 +1,166 @@
 // src/repositories/transactionBudgetingRepository.ts
-import { PrismaClient, BudgetAllocation, Prisma } from '@prisma/client';
+import { PrismaClient, BudgetPlan, ExpenseAllocation, Prisma } from '@prisma/client';
 import { inject, injectable } from 'inversify';
 import { TYPES } from '../utils/types';
+import { Decimal } from '@prisma/client/runtime/library';
 
-// DTO for BudgetAllocation Creation
-// Client sends categoryId, subcategoryId, periodId, percentage, amount
-export type CreateBudgetAllocationDto = Omit<BudgetAllocation, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt' | 'category' | 'subcategory' | 'period'>;
+// DTO for BudgetPlan Creation
+export type CreateBudgetPlanDto = Omit<BudgetPlan, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt' | 'userId' | 'user' | 'allocations'>;
 
-// DTO for BudgetAllocation Update (specific fields might be updatable)
-export type UpdateBudgetAllocationDto = Partial<Pick<BudgetAllocation, 'percentage' | 'amount'>>; // Example: only these are updatable
+// DTO for ExpenseAllocation Creation (linked to a BudgetPlan)
+export type CreateExpenseAllocationDto = Omit<ExpenseAllocation, 'id' | 'createdAt' | 'updatedAt' | 'deletedAt' | 'budgetPlan' | 'category' | 'subcategory'> & {
+    // budgetPlanId is connected internally
+    // categoryId and subcategoryId are direct fields
+};
 
-// Define the include object for populated BudgetAllocations
-const budgetAllocationIncludeDefault = {
+export type UpdateExpenseAllocationDto = Partial<Pick<ExpenseAllocation, 'percentage' | 'amount'>>;
+
+const expenseAllocationIncludeDefault = {
     category: true,
     subcategory: true,
-    period: true, // Important for user scoping and context
-} satisfies Prisma.BudgetAllocationInclude;
+} satisfies Prisma.ExpenseAllocationInclude;
 
-// Prisma's way of getting the type with includes
-export type PopulatedBudgetAllocation = Prisma.BudgetAllocationGetPayload<{
-    include: typeof budgetAllocationIncludeDefault
+const budgetPlanIncludeDefault = {
+    allocations: {
+        where: { deletedAt: null },
+        include: expenseAllocationIncludeDefault,
+    },
+    user: false, // Usually not needed when fetching a plan
+} satisfies Prisma.BudgetPlanInclude;
+
+
+export type PopulatedExpenseAllocation = Prisma.ExpenseAllocationGetPayload<{
+    include: typeof expenseAllocationIncludeDefault
 }>;
+
+export type PopulatedBudgetPlan = Prisma.BudgetPlanGetPayload<{
+    include: typeof budgetPlanIncludeDefault
+}>;
+
 
 @injectable()
 export class TransactionBudgetingRepository {
     private readonly prisma: PrismaClient;
-    private readonly defaultInclude = budgetAllocationIncludeDefault;
 
     constructor(@inject(TYPES.PrismaClient) prisma: PrismaClient) {
         this.prisma = prisma;
     }
 
-    async create(data: CreateBudgetAllocationDto): Promise<PopulatedBudgetAllocation> {
-        return this.prisma.budgetAllocation.create({
+    // --- BudgetPlan Methods ---
+    async createBudgetPlan(data: CreateBudgetPlanDto, userId: string): Promise<PopulatedBudgetPlan> {
+        return this.prisma.budgetPlan.create({
             data: {
-                category: { connect: { id: data.categoryId } },
-                subcategory: { connect: { id: data.subcategoryId } },
-                period: { connect: { id: data.periodId } },
-                percentage: data.percentage,
-                amount: data.amount,
+                ...data,
+                userId: userId,
             },
-            include: this.defaultInclude,
+            include: budgetPlanIncludeDefault,
         });
     }
 
-    async findById(id: string): Promise<PopulatedBudgetAllocation | null> {
-        return this.prisma.budgetAllocation.findFirst({
-            where: {
-                id,
-                deletedAt: null,
-            },
-            include: this.defaultInclude,
+    async findBudgetPlanById(id: string, userId: string): Promise<PopulatedBudgetPlan | null> {
+        return this.prisma.budgetPlan.findFirst({
+            where: { id, userId, deletedAt: null },
+            include: budgetPlanIncludeDefault,
         });
     }
 
-    async findAllByPeriodId(
-        periodId: string,
-        args?: Omit<Prisma.BudgetAllocationFindManyArgs, 'where' | 'include'> & { where?: Prisma.BudgetAllocationWhereInput }
-    ): Promise<PopulatedBudgetAllocation[]> {
-        // Note: User scoping is typically handled by ensuring the periodId belongs to the user in the service layer.
-        const queryArgs: Prisma.BudgetAllocationFindManyArgs = {
+    async findBudgetPlansByUserAndDateRange(
+        userId: string,
+        planStartDate: Date,
+        planEndDate: Date,
+        args?: Prisma.BudgetPlanFindManyArgs
+    ): Promise<PopulatedBudgetPlan[]> {
+        return this.prisma.budgetPlan.findMany({
             ...args,
             where: {
-                ...(args?.where || {}),
-                periodId,
+                userId,
+                planStartDate,
+                planEndDate,
                 deletedAt: null,
+                ...(args?.where)
             },
-            include: this.defaultInclude,
-            orderBy: args?.orderBy || { category: { name: 'asc' } }, // Example default order
-        };
-        return this.prisma.budgetAllocation.findMany({
-            ...queryArgs,
-            include: {
-                category: true,
-                subcategory: true,
-                period: true,
-            },
+            include: budgetPlanIncludeDefault,
+            orderBy: args?.orderBy || { planStartDate: 'desc' }
         });
     }
 
-    async findManyByCriteria(
-        criteria: Prisma.BudgetAllocationWhereInput,
-        args?: Omit<Prisma.BudgetAllocationFindManyArgs, 'where' | 'include'>
-    ): Promise<PopulatedBudgetAllocation[]> {
-        const queryArgs: Prisma.BudgetAllocationFindManyArgs = {
-            ...args,
-            where: {
-                ...criteria, // Caller (service) must ensure userId scoping via periodId and deletedAt: null
-                deletedAt: null,
-            },
-            include: this.defaultInclude,
-        };
-        return this.prisma.budgetAllocation.findMany({
-            ...queryArgs,
-            include: this.defaultInclude,
-        });
-    }
+    async updateBudgetPlan(id: string, data: Partial<CreateBudgetPlanDto>, userId: string): Promise<PopulatedBudgetPlan | null> {
+        // Ensure user owns this plan
+        const existing = await this.prisma.budgetPlan.findFirst({ where: { id, userId } });
+        if (!existing) return null;
 
-
-    async update(id: string, data: UpdateBudgetAllocationDto): Promise<PopulatedBudgetAllocation> {
-        // Ownership and existence check in service layer
-        // Only include fields that are defined
-        const updateData: Prisma.BudgetAllocationUpdateInput = {};
-        if (data.percentage !== undefined) {
-            updateData.percentage = data.percentage;
-        }
-        if (data.amount !== undefined) {
-            updateData.amount = data.amount;
-        }
-        return this.prisma.budgetAllocation.update({
+        return this.prisma.budgetPlan.update({
             where: { id },
-            data: updateData,
-            include: this.defaultInclude,
+            data,
+            include: budgetPlanIncludeDefault
         });
     }
 
-    async softDelete(id: string): Promise<PopulatedBudgetAllocation> {
-        return this.prisma.budgetAllocation.update({
+    async softDeleteBudgetPlan(id: string, userId: string): Promise<PopulatedBudgetPlan | null> {
+        const existing = await this.prisma.budgetPlan.findFirst({ where: { id, userId } });
+        if (!existing) return null;
+
+        // Also soft-delete its allocations in a transaction (best handled in service)
+        return this.prisma.budgetPlan.update({
             where: { id },
             data: { deletedAt: new Date() },
-            include: this.defaultInclude,
+            include: budgetPlanIncludeDefault,
         });
     }
 
-    async deleteMany(args: Prisma.BudgetAllocationDeleteManyArgs): Promise<Prisma.BatchPayload> {
-        // Used for clearing allocations for a period/category during budget saving
-        return this.prisma.budgetAllocation.deleteMany(args);
-    }
 
-    // Hard delete (if needed)
-    async hardDelete(id: string): Promise<BudgetAllocation> {
-        return this.prisma.budgetAllocation.delete({
-            where: { id },
+    // --- ExpenseAllocation Methods ---
+    async createExpenseAllocation(data: CreateExpenseAllocationDto, budgetPlanId: string): Promise<PopulatedExpenseAllocation> {
+        return this.prisma.expenseAllocation.create({
+            data: {
+                budgetPlanId,
+                categoryId: data.categoryId,
+                subcategoryId: data.subcategoryId,
+                percentage: new Decimal(data.percentage.toString()), // Ensure Decimal
+                amount: new Decimal(data.amount.toString()),       // Ensure Decimal
+            },
+            include: expenseAllocationIncludeDefault,
         });
     }
 
-    // Restore (if needed)
-    async restore(id: string): Promise<PopulatedBudgetAllocation> {
-        return this.prisma.budgetAllocation.update({
+    async findExpenseAllocationById(id: string): Promise<PopulatedExpenseAllocation | null> {
+        return this.prisma.expenseAllocation.findFirst({
+            where: { id, deletedAt: null },
+            include: expenseAllocationIncludeDefault,
+        });
+    }
+
+    async findAllAllocationsByBudgetPlanId(budgetPlanId: string): Promise<PopulatedExpenseAllocation[]> {
+        return this.prisma.expenseAllocation.findMany({
+            where: { budgetPlanId, deletedAt: null },
+            include: expenseAllocationIncludeDefault,
+            orderBy: { category: { name: 'asc' } },
+        });
+    }
+
+    async updateExpenseAllocation(id: string, data: UpdateExpenseAllocationDto): Promise<PopulatedExpenseAllocation> {
+        const updateData: Prisma.ExpenseAllocationUpdateInput = {};
+        if (data.percentage !== undefined) updateData.percentage = new Decimal(data.percentage.toString());
+        if (data.amount !== undefined) updateData.amount = new Decimal(data.amount.toString());
+        return this.prisma.expenseAllocation.update({
             where: { id },
-            data: { deletedAt: null },
-            include: this.defaultInclude,
+            data: updateData,
+            include: expenseAllocationIncludeDefault,
+        });
+    }
+
+    async softDeleteExpenseAllocation(id: string): Promise<PopulatedExpenseAllocation> {
+        return this.prisma.expenseAllocation.update({
+            where: { id },
+            data: { deletedAt: new Date() },
+            include: expenseAllocationIncludeDefault,
+        });
+    }
+
+    async softDeleteManyAllocationsByBudgetPlanId(budgetPlanId: string): Promise<Prisma.BatchPayload> {
+        return this.prisma.expenseAllocation.updateMany({
+            where: { budgetPlanId, deletedAt: null },
+            data: { deletedAt: new Date() },
         });
     }
 }
