@@ -7,10 +7,238 @@ generator client {
   provider = "prisma-client-js"
 }
 
-enum EvaluationStatus {
-  IDEAL
-  NOT_IDEAL
-  INCOMPLETE
+model User {
+  id            String   @id @default(uuid())
+  name          String
+  username      String   @unique
+  email         String   @unique
+  password      String
+  address       String?
+  birthdate     DateTime?
+  occupationId  String?
+  occupation    Occupation? @relation(fields: [occupationId], references: [id])
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  deletedAt     DateTime?
+
+  transactions        Transaction[]
+  otpVerifications    OtpVerification[]
+  budgetPlans         BudgetPlan[]       // User has many BudgetPlans
+  evaluationResults   EvaluationResult[] // User has many EvaluationResults
+}
+
+model Occupation {
+  id                  String   @id @default(uuid())
+  name                String   @unique
+  users               User[]
+  categoryOccupations CategoryOccupation[]
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  deletedAt           DateTime?
+}
+
+model AccountType {
+  id         String     @id @default(uuid())
+  name       String     @unique
+  categories Category[]
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  deletedAt  DateTime?
+}
+
+model Category {
+  id                  String                @id @default(uuid())
+  name                String
+  accountTypeId       String
+  accountType         AccountType           @relation(fields: [accountTypeId], references: [id])
+  subcategories       Subcategory[]
+  categoryOccupations CategoryOccupation[]
+  expenseAllocations  ExpenseAllocation[]   // Relation to ExpenseAllocation
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@unique([name, accountTypeId], name: "uniq_category_account_type")
+  @@index([accountTypeId])
+}
+
+model Subcategory {
+  id        String   @id @default(uuid())
+  name      String
+  categoryId String
+  category  Category @relation(fields: [categoryId], references: [id])
+
+  transactions       Transaction[]
+  ratioComponents    RatioComponent[]
+  expenseAllocations ExpenseAllocation[] // Relation to ExpenseAllocation
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@unique([name, categoryId], name: "uniq_subcategory_category")
+  @@index([categoryId])
+}
+
+model Transaction {
+  id            String      @id @default(uuid())
+  description   String
+  amount        Float
+  date          DateTime
+  isBookmarked  Boolean     @default(false)
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subcategoryId String
+  subcategory   Subcategory @relation(fields: [subcategoryId], references: [id])
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([userId])
+  @@index([subcategoryId])
+  @@index([date])
+}
+
+model OtpVerification {
+  id        String    @id @default(uuid())
+  email     String
+  otp       String
+  expiresAt DateTime
+  userId    String?
+  user      User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([email])
+  @@index([userId])
+}
+
+// --- Budgeting ---
+model CategoryOccupation {
+  id           String     @id @default(uuid())
+  occupationId String
+  occupation   Occupation @relation(fields: [occupationId], references: [id])
+  categoryId   String
+  category     Category   @relation(fields: [categoryId], references: [id])
+  lowerBound   Float?
+  upperBound   Float?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([categoryId, occupationId], name: "uniq_category_occupation")
+  @@index([categoryId])
+  @@index([occupationId])
+}
+
+model BudgetPlan {
+  id                         String    @id @default(uuid())
+  userId                     String
+  user                       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  description                String?   // User-defined name for the budget plan
+  planStartDate              DateTime  // Start date for which expenses are budgeted
+  planEndDate                DateTime  // End date for which expenses are budgeted
+  incomeCalculationStartDate DateTime  // Start date of the period used for income calculation
+  incomeCalculationEndDate   DateTime  // End date of the period used for income calculation
+  totalCalculatedIncome      Decimal   // The sum of selected incomes for THIS plan
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  allocations ExpenseAllocation[] // A BudgetPlan has many ExpenseAllocations
+
+  // A user can't have two budget plans with the same description for the exact same plan dates
+  @@unique([userId, planStartDate, planEndDate, description], name: "uniq_user_budget_plan_dates_desc")
+  @@index([userId])
+  @@index([userId, planStartDate, planEndDate])
+}
+
+model ExpenseAllocation {
+  id            String     @id @default(uuid())
+  budgetPlanId  String
+  budgetPlan    BudgetPlan @relation(fields: [budgetPlanId], references: [id], onDelete: Cascade)
+
+  categoryId    String
+  category      Category   @relation(fields: [categoryId], references: [id])
+  subcategoryId String
+  subcategory   Subcategory @relation(fields: [subcategoryId], references: [id])
+
+  percentage    Decimal // Percentage of budgetPlan.totalCalculatedIncome for this category
+  amount        Decimal // Actual monetary amount allocated for THIS CATEGORY (percentage * totalCalculatedIncome)
+                        // If you want amount per subcategory, this model would need to change
+                        // or you would have one ExpenseAllocation per subcategory.
+                        // Current PSPEC implies amount is for parent category.
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([budgetPlanId])
+  @@index([categoryId])
+  @@index([subcategoryId])
+}
+
+// --- Evaluation ---
+model Ratio {
+  id                      String   @id @default(uuid())
+  code                    String   @unique
+  title                   String
+  description             String?
+  multiplier              Float?   @default(1)
+  lowerBound              Float?
+  upperBound              Float?
+  isLowerBoundInclusive   Boolean? @default(true)
+  isUpperBoundInclusive   Boolean? @default(true)
+  idealText               String?
+
+  ratioComponents   RatioComponent[]
+  evaluationResults EvaluationResult[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model RatioComponent {
+  id              String          @id @default(uuid())
+  ratioId         String
+  ratio           Ratio           @relation(fields: [ratioId], references: [id], onDelete: Cascade)
+  subcategoryId   String
+  subcategory     Subcategory     @relation(fields: [subcategoryId], references: [id])
+  side            Side
+  sign            Int
+  aggregationType AggregationType
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+@@unique([ratioId, subcategoryId, side], name: "uniq_ratio_subcategory_side")
+  @@index([ratioId])
+  @@index([subcategoryId])
+}
+
+model EvaluationResult {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  startDate DateTime // Start of the ad-hoc evaluation period
+  endDate   DateTime // End of the ad-hoc evaluation period
+  ratioId   String
+  ratio     Ratio    @relation(fields: [ratioId], references: [id])
+
+  value        Float
+  status       EvaluationStatus
+  calculatedAt DateTime         @default(now())
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@unique([userId, ratioId, startDate, endDate], name: "uniq_user_eval_result_dates")
+  @@index([userId])
+  @@index([ratioId])
 }
 
 enum Side {
@@ -23,236 +251,8 @@ enum AggregationType {
   AVG
 }
 
-model AccountType {
-  id         String     @id @default(uuid())
-  name       String     @unique
-  categories Category[]
-
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
-}
-
-model Category {
-  id                  String               @id @default(uuid())
-  accountType         AccountType          @relation(fields: [accountTypeId], references: [id], onDelete: Cascade)
-  accountTypeId       String
-  name                String
-  subcategories       Subcategory[]
-  budgetAllocations   BudgetAllocation[]
-  categoryOccupations CategoryOccupation[]
-
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
-
-  @@unique([accountTypeId, name], name: "uniq_accountType_name")
-  @@index([accountTypeId], name: "idx_category_accountType")
-}
-
-model CategoryOccupation {
-  id           String     @id @default(uuid())
-  category     Category   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  categoryId   String
-  occupation   Occupation @relation(fields: [occupationId], references: [id], onDelete: Cascade)
-  occupationId String
-  upperBound   Float?
-  lowerBound   Float?
-
-  @@unique([categoryId, occupationId], name: "uniq_category_occupation")
-  @@index([occupationId], name: "idx_categoryOccupation_occupation")
-}
-
-model Subcategory {
-  id               String             @id @default(uuid())
-  category         Category           @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  categoryId       String
-  name             String
-  transactions     Transaction[]
-  ratioComponents  RatioComponent[]
-  incomePeriods    IncomePeriod[]
-  BudgetAllocation BudgetAllocation[]
-
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
-
-  @@unique([categoryId, name], name: "uniq_category_subcategory")
-  @@index([categoryId], name: "idx_subcategory_category")
-}
-
-model User {
-  id           String      @id @default(uuid())
-  name         String
-  username     String      @unique
-  email        String      @unique
-  password     String
-  address      String
-  occupation   Occupation? @relation(fields: [occupationId], references: [id])
-  occupationId String?
-  birthdate    DateTime
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
-  deletedAt    DateTime?
-
-  transactions     Transaction[]
-  otpVerifications OtpVerification[]
-  periods          Period[]
-  evaluationResults EvaluationResult[]
-}
-
-model Occupation {
-  id                  String               @id @default(uuid())
-  name                String               @unique
-  users               User[]
-  categoryOccupations CategoryOccupation[]
-
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
-}
-
-model OtpVerification {
-  id        String    @id @default(uuid())
-  email     String
-  otp       String
-  createdAt DateTime  @default(now())
-  expiresAt DateTime
-  deletedAt DateTime?
-
-  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId String?
-
-  @@index([expiresAt], name: "idx_otp_expiresAt")
-}
-
-model Transaction {
-  id            String      @id @default(uuid())
-  user          User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId        String?
-  description   String
-  amount        Float
-  date          DateTime    @default(now()) @db.Timestamptz(6)
-  subcategory   Subcategory @relation(fields: [subcategoryId], references: [id], onDelete: Restrict)
-  subcategoryId String
-  isBookmarked  Boolean     @default(false)
-
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
-
-  @@index([userId, date], name: "idx_transaction_user_date")
-  @@index([subcategoryId], name: "idx_transaction_subcategory")
-}
-
-model Period {
-  id          String   @id @default(uuid())
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId      String
-  startDate   DateTime
-  endDate     DateTime
-  periodType  String   @default("income")
-  description String?
-
-  incomePeriods     IncomePeriod[]
-  budgetAllocations BudgetAllocation[]
-  evaluationResults EvaluationResult[]
-
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
-
-  // @@unique([userId, startDate, endDate], name: "uniq_user_period")
-  @@unique([userId, startDate, endDate, periodType], name: "uniq_user_period_dates_type")
-  @@index([userId, periodType], name: "idx_period_user_type")
-}
-
-model IncomePeriod {
-  id            String      @id @default(uuid())
-  period        Period      @relation(fields: [periodId], references: [id], onDelete: Cascade)
-  periodId      String
-  subcategory   Subcategory @relation(fields: [subcategoryId], references: [id], onDelete: Cascade)
-  subcategoryId String
-  amount        Decimal
-
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
-
-  @@unique([periodId, subcategoryId], name: "uniq_incomePeriod_subcategory")
-  @@index([periodId], name: "idx_incomePeriod_period")
-  @@index([subcategoryId], name: "idx_incomePeriod_subcategory")
-}
-
-model BudgetAllocation {
-  id            String      @id @default(uuid())
-  category      Category    @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  categoryId    String
-  subcategory   Subcategory @relation(fields: [subcategoryId], references: [id], onDelete: Restrict)
-  subcategoryId String
-  period        Period      @relation(fields: [periodId], references: [id], onDelete: Cascade)
-  periodId      String
-  percentage    Decimal
-  amount        Decimal
-
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
-
-  @@unique([categoryId, periodId, subcategoryId], name: "uniq_category_subcategory_period_allocation")
-  @@index([periodId], name: "idx_budget_period")
-  @@index([categoryId], name: "idx_budget_category")
-  @@index([subcategoryId], name: "idx_budget_subcategory")
-}
-
-model Ratio {
-  id              String             @id @default(uuid())
-  code            String             @unique
-  title           String
-  multiplier      Float              @default(100)
-  lowerBound      Float?
-  isLowerBoundInclusive Boolean? @default(true) // Default to inclusive
-  upperBound      Float?
-  isUpperBoundInclusive Boolean? @default(true) // Default to inclusive
-  ratioComponents RatioComponent[]
-  results         EvaluationResult[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model RatioComponent {
-  id              String          @id @default(uuid())
-  ratio           Ratio           @relation(fields: [ratioId], references: [id], onDelete: Cascade)
-  ratioId         String
-  subcategory     Subcategory     @relation(fields: [subcategoryId], references: [id], onDelete: Cascade)
-  subcategoryId   String
-  side            Side
-  sign            Int
-  aggregationType AggregationType
-
-  @@unique([ratioId, subcategoryId, side], name: "uniq_ratio_subcategory_side")
-  @@index([ratioId], name: "idx_ratioComponent_ratio")
-  @@index([subcategoryId], name: "idx_ratioComponent_subcategory")
-}
-
-model EvaluationResult {
-  id           String   @id @default(uuid())
-  ratio        Ratio    @relation(fields: [ratioId], references: [id], onDelete: Cascade)
-  ratioId      String
-  period       Period   @relation(fields: [periodId], references: [id], onDelete: Cascade)
-  periodId     String
-  value        Float
-  status       EvaluationStatus // <<< ADD THIS FIELD
-  calculatedAt DateTime @default(now())
-  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId       String           // <<< ADD THIS FIELD (direct link to User)
-
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
-
-  @@unique([ratioId, periodId], name: "uniq_result_ratio_period")
-  @@index([periodId], name: "idx_result_period")
-  @@index([userId]) // Add index for userId
+enum EvaluationStatus {
+  IDEAL
+  NOT_IDEAL
+  INCOMPLETE
 }
