@@ -1,9 +1,9 @@
 // src/services/transactionEvaluationService.ts
-import {/* Prisma,*/ Ratio, RatioComponent, Subcategory, Side, AggregationType, EvaluationStatus /*, EvaluationResult, User*/ } from '@prisma/client';
+import { Ratio, RatioComponent, Subcategory, Side, AggregationType, EvaluationStatus, EvaluationResult, Category, AccountType, User } from '@prisma/client';
 import {
     TransactionEvaluationRepository,
-    PopulatedEvaluationResult,
-    CreateEvaluationResultDto
+    CreateEvaluationResultDto,
+    PopulatedEvaluationResult as RepoPopulatedEvaluationResult // Alias to avoid conflict if local types are similar
 } from '../repositories/transactionEvaluationRepository';
 import { TransactionService, PopulatedTransaction } from './transactionService';
 import { TYPES } from '../utils/types';
@@ -31,19 +31,31 @@ export interface ConceptualComponentValueDto {
     value: number;
 }
 
-// This DTO needs to fully represent the structure, including nested 'ratio'
+// Define more precise types for populated data
+interface SubcategoryWithFullHierarchy extends Subcategory {
+    category: Category & {
+        accountType: AccountType;
+    };
+}
+
+interface PopulatedRatioWithAccountTypedComponents extends Ratio {
+    ratioComponents: (RatioComponent & {
+        subcategory: SubcategoryWithFullHierarchy; // Subcategory includes its full hierarchy
+    })[];
+}
+
+interface PopulatedEvaluationResultWithRatio extends EvaluationResult { // This represents EvaluationResult fully populated
+    ratio: PopulatedRatioWithAccountTypedComponents;
+    user?: User; // Optional user include
+}
+
 export interface EvaluationResultDetailDto {
     id: string;
     userId: string;
-    // user?: User; // Making user optional or not including if not sent to client
     startDate: Date;
     endDate: Date;
     ratioId: string;
-    ratio: Ratio & { // Ensuring ratio is populated for detail view
-        ratioComponents: (RatioComponent & {
-            subcategory: Subcategory;
-        })[];
-    };
+    ratio: PopulatedRatioWithAccountTypedComponents;
     value: number;
     status: EvaluationStatus;
     calculatedAt: Date;
@@ -65,9 +77,9 @@ export interface ConceptualSums {
     debtPayments: number;
     deductions: number;
     invested: number;
-    totalAssets: number; // Properti opsional, akan dihitung
-    netWorth: number;    // Properti opsional, akan dihitung
-    netIncome: number;   // Properti opsional, akan dihitung
+    totalAssets: number;
+    netWorth: number;
+    netIncome: number;
 }
 
 
@@ -95,83 +107,137 @@ export class TransactionEvaluationService {
         if (lowerBound !== null && upperBound !== null) return meetsLower && meetsUpper ? EvaluationStatus.IDEAL : EvaluationStatus.NOT_IDEAL;
         if (lowerBound !== null) return meetsLower ? EvaluationStatus.IDEAL : EvaluationStatus.NOT_IDEAL;
         if (upperBound !== null) return meetsUpper ? EvaluationStatus.IDEAL : EvaluationStatus.NOT_IDEAL;
+        if (ratio.code === "SOLVENCY_RATIO" && value > 0) return EvaluationStatus.IDEAL;
         return EvaluationStatus.NOT_IDEAL;
     }
 
-    private calculateSingleRatioValue(transactions: PopulatedTransaction[], ratio: Ratio & { ratioComponents: (RatioComponent & { subcategory: Subcategory })[] }): number {
-        console.log(transactions.length); // to cancel out the unused variable warning
-        let numSum = 0, denSum = 0;
-        const processSide = (side: Side): number => {
-            let totalSideVal = 0;
-            const sideComps = ratio.ratioComponents.filter(c => c.side === side);
-            const subcatAggs: Record<string, { sum: number, count: number }> = {};
-            for (const comp of sideComps) {
-                if (!comp.subcategory) {
-                    logger.warn(`RatioComponent ${comp.id} for ratio ${ratio.id} is missing subcategory data.`);
-                    continue;
-                }
-                const subId = comp.subcategoryId;
-                subcatAggs[subId] ??= { sum: 0, count: 0 };
+    private async calculateSingleRatioValue(
+        userId: string,
+        _evaluationStartDate: Date,
+        evaluationEndDate: Date,
+        ratio: PopulatedRatioWithAccountTypedComponents,
+        allTransactionsForPeriod: PopulatedTransaction[]
+    ): Promise<number> {
+        let numeratorSum = 0;
+        let denominatorSum = 0;
+
+        const aggregatedFlowValuesInPeriod: Record<string, { sum: number, count: number }> = {};
+        for (const tx of allTransactionsForPeriod) {
+            if (tx.subcategory?.category?.accountType?.name === "Pemasukan" ||
+                tx.subcategory?.category?.accountType?.name === "Pengeluaran") {
+                const subId = tx.subcategoryId;
+                aggregatedFlowValuesInPeriod[subId] ??= { sum: 0, count: 0 };
+                aggregatedFlowValuesInPeriod[subId].sum += tx.amount;
+                aggregatedFlowValuesInPeriod[subId].count++;
             }
-            for (const comp of sideComps) {
-                if (!comp.subcategory) continue;
-                const agg = subcatAggs[comp.subcategoryId];
+        }
+
+        const getSubcategoryBalance = async (subcategoryId: string): Promise<number> => {
+            const transactionsForBalance = await prisma.transaction.findMany({
+                where: {
+                    userId: userId,
+                    subcategoryId: subcategoryId,
+                    date: { lte: evaluationEndDate },
+                    deletedAt: null,
+                },
+                select: { amount: true }
+            });
+            return transactionsForBalance.reduce((acc, curr) => acc + curr.amount, 0);
+        };
+
+        const processSide = async (side: Side): Promise<number> => {
+            let totalSideVal = 0;
+            const sideComps = ratio.ratioComponents.filter(
+                (rc): rc is RatioComponent & { subcategory: SubcategoryWithFullHierarchy } =>
+                    rc.deletedAt === null &&
+                    rc.subcategory != null &&
+                    rc.subcategory.deletedAt === null &&
+                    rc.subcategory.category?.accountType != null
+            ).filter(rc => rc.side === side);
+
+            for (const component of sideComps) {
+                const accountTypeName = component.subcategory.category.accountType.name;
                 let valToUse = 0;
-                if (agg) {
-                    if (comp.aggregationType === AggregationType.SUM) valToUse = agg.sum;
-                    else if (comp.aggregationType === AggregationType.AVG) valToUse = (agg.count > 0) ? (agg.sum / agg.count) : 0;
+
+                if (accountTypeName === "Aset" || accountTypeName === "Liabilitas") {
+                    valToUse = await getSubcategoryBalance(component.subcategoryId);
+                } else if (accountTypeName === "Pemasukan" || accountTypeName === "Pengeluaran") {
+                    const aggData = aggregatedFlowValuesInPeriod[component.subcategoryId];
+                    if (aggData) {
+                        if (component.aggregationType === AggregationType.SUM) {
+                            valToUse = aggData.sum;
+                        } else if (component.aggregationType === AggregationType.AVG) {
+                            valToUse = (aggData.count > 0) ? (aggData.sum / aggData.count) : 0;
+                        }
+                    }
                 }
-                totalSideVal += valToUse * comp.sign;
+                totalSideVal += valToUse * component.sign;
             }
             return totalSideVal;
         };
-        numSum = processSide(Side.numerator);
-        denSum = processSide(Side.denominator);
-        if (denSum === 0) {
-            if (ratio.code === "LIQUIDITY_RATIO" && numSum === 0) return 0;
-            if (ratio.code === "LIQUIDITY_RATIO" && numSum > 0) return Infinity;
+
+        numeratorSum = await processSide(Side.numerator);
+        denominatorSum = await processSide(Side.denominator);
+
+        if (denominatorSum === 0) {
+            if (ratio.code === "LIQUIDITY_RATIO") {
+                if (numeratorSum === 0) return 0;
+                return Infinity;
+            }
             return NaN;
         }
-        return (numSum / denSum) * (ratio.multiplier ?? 1);
+        const rawValue = numeratorSum / denominatorSum;
+        return rawValue * (ratio.multiplier ?? 1);
     }
 
-    // Full conceptual sums calculation based on Flutter's _TxSums/_computeSums
+
     private computeConceptualSumsForBreakdown(transactions: PopulatedTransaction[]): ConceptualSums {
         const sums: ConceptualSums = {
             liquid: 0, nonLiquid: 0, liabilities: 0, expense: 0, income: 0,
             savings: 0, debtPayments: 0, deductions: 0, invested: 0,
             totalAssets: 0, netWorth: 0, netIncome: 0
         };
-
-        // These names MUST match the subcategory names in your database for this to work.
-        const liquidSubcategoryNames = ['Uang Tunai', 'Uang Rekening Bank', 'Uang E-Wallet', 'Dividen Saham', 'Bunga Obligasi', 'Keuntungan Modal Kripto']; // Adjusted to plausible DB names
-        const nonLiquidSubcategoryNames = ['Piutang Usaha', 'Rumah Tinggal', 'Apartemen', 'Ruko', 'Properti Sewa', 'Mobil Pribadi', 'Motor Pribadi', 'Saham Perusahaan', 'Obligasi Pemerintah', 'Reksadana Campuran', 'Aset Kripto', 'Barang Koleksi', 'Perhiasan Emas'];
-        const liabilitiesSubcategoryNames = ['Saldo Kartu Kredit', 'Tagihan Utilitas', 'Cicilan Kendaraan', 'Pajak Penghasilan Terhutang', 'Pinjaman Bank', 'KPR Rumah'];
-        const expenseSubcategoryNames = ['Tabungan Darurat', 'Belanja Makanan Pokok', 'Minuman Sehari-hari', 'Hadiah Ulang Tahun', 'Donasi Amal', 'Bensin Mobil', 'Tiket Kereta Api', 'Servis Motor', 'Obat-obatan', 'Biaya Dokter', 'Perawatan Wajah', 'Pakaian Kerja', 'Tiket Bioskop', 'Langganan Gym', 'Biaya Kursus Online', 'SPP Anak', 'Cicilan KPR', 'Pajak Bumi Bangunan', 'Premi Asuransi Jiwa', 'Sewa Apartemen', 'Belanja Kebutuhan Rumah Tangga'];
-        const incomeSubcategoryNames = ['Gaji Bulanan', 'Upah Harian Proyek', 'Bonus Tahunan', 'Komisi Penjualan', 'Dividen Saham', 'Bunga Deposito', 'Keuntungan Jual Saham', 'Pendapatan Proyek Freelance'];
-        const savingsSubcategoryNames = ['Tabungan Darurat', 'Tabungan Pendidikan']; // Might overlap with expenses if 'Tabungan' expense is for saving
-        const debtPaymentsSubcategoryNames = ['Cicilan Kendaraan', 'Saldo Kartu Kredit', 'Pinjaman Bank', 'Cicilan KPR'];
-        const deductionsSubcategoryNames = ['Pajak Penghasilan Terhutang', 'Premi Asuransi Jiwa', 'Premi Asuransi Kesehatan']; // Typically taxes, insurance premiums
-        const investedSubcategoryNames = ['Saham Perusahaan', 'Obligasi Pemerintah', 'Reksadana Campuran', 'Aset Kripto', 'Properti Sewa'];
+        // These names MUST match the subcategory names in your database (from seedCategoriesAndSubcategories.ts)
+        const liquidSubcategoryNames = ['Uang Tunai', 'Uang Rekening Bank', 'Uang E-Wallet', 'Dividen', 'Bunga', 'Untung Modal'];
+        const nonLiquidSubcategoryNames = ['Piutang', 'Rumah', 'Apartemen', 'Ruko', 'Gudang', 'Kios', 'Properti Sewa', 'Kendaraan', 'Elektronik', 'Furnitur', 'Saham', 'Obligasi', 'Reksadana', 'Kripto', 'Koleksi', 'Perhiasan'];
+        const liabilitiesSubcategoryNames = ['Saldo Kartu Kredit', 'Tagihan', 'Cicilan', 'Pajak', 'Pinjaman', 'Pinjaman Properti'];
+        // For expense & income, we will primarily sum by AccountType, but some specific subcategories are needed for conceptual sums like "Savings" or "DebtPayments"
+        const savingsSubcategoryNames = ['Tabungan']; // This is an "Pengeluaran" subcategory
+        const debtPaymentsSubcategoryNames = ['Cicilan', 'Saldo Kartu Kredit', 'Pinjaman', 'Pinjaman Properti', 'Bayar pinjaman']; // These are "Pengeluaran" or "Liabilitas"
+        const deductionsSubcategoryNames = ['Pajak', 'Bayar asuransi']; // 'Pajak' here is an "Pengeluaran" for tax payment, 'Bayar asuransi' is "Pengeluaran"
+        const investedSubcategoryNames = ['Saham', 'Obligasi', 'Reksadana', 'Kripto', 'Properti Sewa']; // These are "Aset" subcategories
 
         for (const tx of transactions) {
-            const subName = tx.subcategory.name; // Assumes subcategory is populated
-            if (sums) {
-                if (liquidSubcategoryNames.includes(subName)) sums.liquid += tx.amount;
-                if (nonLiquidSubcategoryNames.includes(subName)) sums.nonLiquid += tx.amount;
-                if (liabilitiesSubcategoryNames.includes(subName)) sums.liabilities += tx.amount;
-                if (expenseSubcategoryNames.includes(subName)) sums.expense += tx.amount;
-                if (incomeSubcategoryNames.includes(subName)) sums.income += tx.amount;
+            if (!tx.subcategory?.category?.accountType) {
+                logger.warn(`[EvaluationService] Transaction ${tx.id} missing full subcategory details for conceptual sum.`);
+                continue;
+            }
+            const subName = tx.subcategory.name;
+            const accTypeName = tx.subcategory.category.accountType.name;
+
+            // Sum main Pemasukan and Pengeluaran
+            if (accTypeName === "Pemasukan") {
+                sums.income += tx.amount;
+            } else if (accTypeName === "Pengeluaran") {
+                sums.expense += tx.amount;
+                // Specific expense types for conceptual sums
                 if (savingsSubcategoryNames.includes(subName)) sums.savings += tx.amount;
                 if (debtPaymentsSubcategoryNames.includes(subName)) sums.debtPayments += tx.amount;
                 if (deductionsSubcategoryNames.includes(subName)) sums.deductions += tx.amount;
-                if (investedSubcategoryNames.includes(subName)) sums.invested += tx.amount;
             }
+
+            // For assets and liabilities, we sum based on the specific subcategory names
+            // This assumes transactions to these subcategories represent their total value or change contributing to it.
+            // The "initial balance" transactions are key here.
+            if (liquidSubcategoryNames.includes(subName)) sums.liquid += tx.amount;
+            if (nonLiquidSubcategoryNames.includes(subName)) sums.nonLiquid += tx.amount;
+            if (investedSubcategoryNames.includes(subName)) sums.invested += tx.amount; // This will double-count if subName is also in nonLiquid, which is fine for this conceptual sum.
+            if (liabilitiesSubcategoryNames.includes(subName)) sums.liabilities += tx.amount;
         }
 
-        sums['totalAssets'] = sums.liquid + sums.nonLiquid;
-        sums['netWorth'] = sums.totalAssets - sums.liabilities;
-        sums['netIncome'] = sums.income - sums.deductions;
+        sums.totalAssets = sums.liquid + sums.nonLiquid;
+        sums.netWorth = sums.totalAssets - sums.liabilities;
+        sums.netIncome = sums.income - sums.deductions; // Assuming 'deductions' are correctly identified expenses
         return sums;
     }
 
@@ -182,14 +248,19 @@ export class TransactionEvaluationService {
         if (endDate < startDate) {
             throw new BadRequestError("Evaluation end date cannot be before start date.");
         }
-        const diffDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 3600 * 24));
-        if (diffDays < 29) {
-            throw new BadRequestError("Evaluation date range must be at least approximately 1 month (29 days).");
+        const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 3600 * 24));
+
+        if (diffDays < 28) {
+            logger.warn(`[EvaluationService] Evaluation date range is less than 28 days (${diffDays} days). This might be too short for meaningful monthly ratios.`);
+        }
+        if (diffDays > 92) { // Approx 3 months + a bit buffer
+            throw new BadRequestError("Evaluation date range should not exceed ~3 months.");
         }
     }
 
     async calculateAndStoreEvaluations(dto: CalculateEvaluationClientDto, userId: string): Promise<SingleRatioCalculationResultDto[]> {
-        const startDate = new Date(dto.startDate); // Ensure they are Date objects
+        const startDate = new Date(dto.startDate);
         const endDate = new Date(dto.endDate);
         this.validateEvaluationDates(startDate, endDate);
 
@@ -199,51 +270,78 @@ export class TransactionEvaluationService {
         });
 
         if (transactionsInPeriod.length === 0) {
-            logger.warn(`[EvaluationService] No transactions for user ${userId} in period ${startDate.toISOString()} - ${endDate.toISOString()}. Results may be INCOMPLETE or zero.`);
+            logger.warn(`[EvaluationService] No transactions for user ${userId} in period ${startDate.toISOString()} - ${endDate.toISOString()}.`);
         }
 
-        const allRatios = await prisma.ratio.findMany({
-            include: { ratioComponents: { include: { subcategory: true } } },
+        const allRatiosFromDbUnfiltered = await prisma.ratio.findMany({
+            where: { deletedAt: null },
+            include: {
+                ratioComponents: {
+                    where: { deletedAt: null },
+                    include: {
+                        subcategory: {
+                            include: {
+                                category: {
+                                    include: {
+                                        accountType: true,
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
         });
-        if (!allRatios.length) throw new AppError("No ratio definitions found in the database.", 500, false);
+
+        const allRatiosFromDb: PopulatedRatioWithAccountTypedComponents[] = allRatiosFromDbUnfiltered.map(ratio => {
+            const activeComponents = ratio.ratioComponents.filter(
+                (rc): rc is RatioComponent & { subcategory: SubcategoryWithFullHierarchy } =>
+                    rc.subcategory != null && rc.subcategory.deletedAt === null &&
+                    rc.subcategory.category != null && rc.subcategory.category.deletedAt === null &&
+                    rc.subcategory.category.accountType != null && rc.subcategory.category.accountType.deletedAt === null
+            );
+            return { ...ratio, ratioComponents: activeComponents };
+        }).filter(r => r.code === "LIQUIDITY_RATIO" || r.ratioComponents.length > 0); // Allow liquidity even if no expense components for some reason (will result in Infinity/0)
+
+        if (!allRatiosFromDb.length) throw new AppError("No active ratio definitions with valid components found.", 500, false);
 
         const resultsDto: SingleRatioCalculationResultDto[] = [];
-        for (const ratio of allRatios) {
-            const populatedRatio = ratio as unknown as Ratio & { ratioComponents: (RatioComponent & { subcategory: Subcategory })[] };
-            const calculatedValue = this.calculateSingleRatioValue(transactionsInPeriod, populatedRatio);
-            const status = this.determineEvaluationStatus(calculatedValue, populatedRatio);
-            const finalValue = (isNaN(calculatedValue) || !isFinite(calculatedValue)) ? 0 : calculatedValue;
-
-            const createDto: CreateEvaluationResultDto = {
+        for (const ratioFromDb of allRatiosFromDb) {
+            const calculatedValue = await this.calculateSingleRatioValue(
                 userId,
                 startDate,
                 endDate,
-                ratioId: ratio.id,
-                value: finalValue,
-                status: status,
-                calculatedAt: new Date()
+                ratioFromDb,
+                transactionsInPeriod
+            );
+            const status = this.determineEvaluationStatus(calculatedValue, ratioFromDb);
+            const valueToStore = (status === EvaluationStatus.INCOMPLETE || !isFinite(calculatedValue)) ? 0 : calculatedValue;
+
+            const createDto: CreateEvaluationResultDto = {
+                userId, startDate, endDate, ratioId: ratioFromDb.id,
+                value: valueToStore, status: status, calculatedAt: new Date()
             };
             await this.evaluationRepository.upsert(
-                userId, startDate, endDate, ratio.id,
-                { value: finalValue, status: status, calculatedAt: new Date() },
+                userId, startDate, endDate, ratioFromDb.id,
+                { value: valueToStore, status: status, calculatedAt: new Date() },
                 createDto
             );
 
             resultsDto.push({
-                ratioId: ratio.id,
-                ratioCode: ratio.code,
-                ratioTitle: ratio.title,
-                value: finalValue,
+                ratioId: ratioFromDb.id,
+                ratioCode: ratioFromDb.code,
+                ratioTitle: ratioFromDb.title,
+                value: valueToStore,
                 status: status,
-                idealRangeDisplay: this.getIdealRangeDisplay(ratio),
+                idealRangeDisplay: this.getIdealRangeDisplay(ratioFromDb),
             });
         }
-        logger.info(`[EvaluationService] Calculated/stored ${resultsDto.length} evaluations for user ${userId}, period ${startDate.toISOString()}-${endDate.toISOString()}`);
+        logger.info(`[EvalService] Calculated/stored ${resultsDto.length} evals for user ${userId}, period ${startDate.toISOString()}-${endDate.toISOString()}`);
         return resultsDto;
     }
 
     private getIdealRangeDisplay(ratio: Ratio): string | null {
-        if (ratio.code === "LIQUIDITY_RATIO") return "3-6 Bulan";
+        if (ratio.code === "LIQUIDITY_RATIO") return "Ideal: 3-6 Bulan";
         const lower = ratio.lowerBound;
         const upper = ratio.upperBound;
         const lowerInc = ratio.isLowerBoundInclusive ?? true;
@@ -251,125 +349,166 @@ export class TransactionEvaluationService {
         const mult = ratio.multiplier ?? 1;
         const unit = mult === 100 ? "%" : "";
 
-        if (lower != null && upper != null) {
-            return `${lowerInc ? '>=' : '>'} ${lower}${unit} dan ${upperInc ? '<=' : '<'} ${upper}${unit}`;
+        let rangeParts: string[] = [];
+        if (lower != null) {
+            rangeParts.push(`${lowerInc ? '>=' : '>'} ${lower}${unit}`);
         }
-        if (lower != null) return `${lowerInc ? '>=' : '>'} ${lower}${unit}`;
-        if (upper != null) return `${upperInc ? '<=' : '<'} ${upper}${unit}`;
-        return ratio.title.includes("Solvabilitas") ? "> 0%" : "N/A";
+        if (upper != null) {
+            rangeParts.push(`${upperInc ? '<=' : '<'} ${upper}${unit}`);
+        }
+
+        if (rangeParts.length > 0) {
+            return `Ideal: ${rangeParts.join(' dan ')}`;
+        }
+        if (ratio.title.toLowerCase().includes("solvabilitas")) return "Ideal: > 0%";
+        return ratio.idealText ?? "Rentang ideal tidak ditentukan";
     }
 
-    async getEvaluationHistoryForUser(userId: string, queryStartDate?: Date, queryEndDate?: Date): Promise<PopulatedEvaluationResult[]> {
+    async getEvaluationHistoryForUser(userId: string, queryStartDate?: Date, queryEndDate?: Date): Promise<RepoPopulatedEvaluationResult[]> {
         logger.info(`[EvaluationService] Fetching evaluation history for user ${userId}`);
         return this.evaluationRepository.findAllByUserIdAndOptionalDateRange(
             userId,
             {
-                customStartDate: queryStartDate, // Gunakan customStartDate
-                customEndDate: queryEndDate,   // Gunakan customEndDate
+                customStartDate: queryStartDate,
+                customEndDate: queryEndDate,
                 orderBy: [{ startDate: 'desc' }, { calculatedAt: 'desc' }]
             }
         );
     }
 
     async getEvaluationDetailById(evaluationResultId: string, userId: string): Promise<EvaluationResultDetailDto> {
-        const resultFromRepo = await this.evaluationRepository.findById(evaluationResultId);
-        if (!resultFromRepo || resultFromRepo.userId !== userId) {
-            throw new NotFoundError(`Evaluation result ID ${evaluationResultId} not found or access denied.`);
-        }
-
-        // Fetch the full EvaluationResult with its relations for breakdown calculation
-        // This ensures we have the 'ratio.ratioComponents' needed.
-        const fullResultFromDb = await prisma.evaluationResult.findUnique({
-            where: { id: evaluationResultId },
+        const fullResultFromDbRaw = await prisma.evaluationResult.findUnique({
+            where: { id: evaluationResultId, userId: userId, deletedAt: null },
             include: {
-                ratio: { include: { ratioComponents: { include: { subcategory: true } } } },
-                user: true, // Include user if needed for detail, or set to false
+                ratio: {
+                    include: {
+                        ratioComponents: {
+                            where: { deletedAt: null },
+                            include: {
+                                subcategory: {
+                                    include: {
+                                        category: {
+                                            include: {
+                                                accountType: true,
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
             }
         });
 
-        if (!fullResultFromDb) {
-            throw new NotFoundError(`Evaluation result with ID ${evaluationResultId} consistency error.`);
+        if (!fullResultFromDbRaw || !fullResultFromDbRaw.ratio || fullResultFromDbRaw.ratio.deletedAt !== null) {
+            throw new NotFoundError(`Evaluation result ID ${evaluationResultId} not found, or refers to a deleted ratio.`);
         }
 
+        const originalRatio = fullResultFromDbRaw.ratio;
+        const activeComponents = originalRatio.ratioComponents.filter(
+            (rc): rc is RatioComponent & { subcategory: SubcategoryWithFullHierarchy } =>
+                rc.subcategory != null && rc.subcategory.deletedAt === null &&
+                rc.subcategory.category != null && rc.subcategory.category.deletedAt === null &&
+                rc.subcategory.category.accountType != null && rc.subcategory.category.accountType.deletedAt === null
+        );
+        const filteredRatio: PopulatedRatioWithAccountTypedComponents = { ...originalRatio, ratioComponents: activeComponents };
+
+        const populatedResult: PopulatedEvaluationResultWithRatio = {
+            ...fullResultFromDbRaw,
+            ratio: filteredRatio
+        };
+
         const transactionsInPeriod = await this.transactionService.getAllUserTransactions(userId, {
-            startDate: fullResultFromDb.startDate.toISOString(),
-            endDate: fullResultFromDb.endDate.toISOString(),
+            startDate: populatedResult.startDate.toISOString(),
+            endDate: populatedResult.endDate.toISOString(),
         });
 
         const conceptualSums = this.computeConceptualSumsForBreakdown(transactionsInPeriod);
         const breakdownComponentsDto: ConceptualComponentValueDto[] = [];
-        const ratioCode = fullResultFromDb.ratio.code;
+        const ratioCode = populatedResult.ratio.code;
 
-        if (ratioCode === "LIQUIDITY_RATIO") { // ID '0' in Flutter
+        // --- THIS IS THE PREVIOUSLY OMITTED PART ---
+        if (ratioCode === "LIQUIDITY_RATIO") {
             breakdownComponentsDto.push({ name: "Total Aset Likuid (Pembilang)", value: conceptualSums.liquid });
             breakdownComponentsDto.push({ name: "Total Pengeluaran Bulanan (Penyebut)", value: conceptualSums.expense });
-        } else if (ratioCode === "LIQUID_ASSETS_TO_NET_WORTH_RATIO") { // ID '1'
+        } else if (ratioCode === "LIQUID_ASSETS_TO_NET_WORTH_RATIO") {
             breakdownComponentsDto.push({ name: "Total Aset Likuid (Pembilang)", value: conceptualSums.liquid });
             breakdownComponentsDto.push({ name: "Total Kekayaan Bersih (Penyebut)", value: conceptualSums.netWorth });
-        } else if (ratioCode === "DEBT_TO_ASSET_RATIO") { // ID '2'
+        } else if (ratioCode === "DEBT_TO_ASSET_RATIO") {
             breakdownComponentsDto.push({ name: "Total Utang (Pembilang)", value: conceptualSums.liabilities });
             breakdownComponentsDto.push({ name: "Total Aset (Penyebut)", value: conceptualSums.totalAssets });
-        } else if (ratioCode === "SAVING_RATIO") { // ID '3'
+        } else if (ratioCode === "SAVING_RATIO") {
             breakdownComponentsDto.push({ name: "Total Tabungan (Pembilang)", value: conceptualSums.savings });
             breakdownComponentsDto.push({ name: "Penghasilan Kotor (Penyebut)", value: conceptualSums.income });
-        } else if (ratioCode === "DEBT_SERVICE_RATIO") { // ID '4'
+        } else if (ratioCode === "DEBT_SERVICE_RATIO") {
             breakdownComponentsDto.push({ name: "Total Pembayaran Utang Bulanan (Pembilang)", value: conceptualSums.debtPayments });
             breakdownComponentsDto.push({ name: "Penghasilan Bersih (Penyebut)", value: conceptualSums.netIncome });
-        } else if (ratioCode === "INVESTMENT_ASSETS_TO_NET_WORTH_RATIO") { // ID '5'
+        } else if (ratioCode === "INVESTMENT_ASSETS_TO_NET_WORTH_RATIO") {
             breakdownComponentsDto.push({ name: "Total Aset Diinvestasikan (Pembilang)", value: conceptualSums.invested });
             breakdownComponentsDto.push({ name: "Total Kekayaan Bersih (Penyebut)", value: conceptualSums.netWorth });
-        } else if (ratioCode === "SOLVENCY_RATIO") { // ID '6'
+        } else if (ratioCode === "SOLVENCY_RATIO") {
             breakdownComponentsDto.push({ name: "Total Kekayaan Bersih (Pembilang)", value: conceptualSums.netWorth });
             breakdownComponentsDto.push({ name: "Total Aset (Penyebut)", value: conceptualSums.totalAssets });
         }
-
+        // --- END OF OMITTED PART ---
 
         let calcNum = 0, calcDen = 0;
-        const populatedRatioForCalc = fullResultFromDb.ratio as unknown as Ratio & { ratioComponents: (RatioComponent & { subcategory: Subcategory })[] };
-        const processSideForBreakdown = (side: Side): number => {
+        // To get the exact num/den for display, we re-run the processSide logic
+        const processSideForBreakdown = async (side: Side): Promise<number> => {
             let totalSideVal = 0;
-            const sideComps = populatedRatioForCalc.ratioComponents.filter(c => c.side === side);
-            const subcatAggs: Record<string, { sum: number, count: number }> = {};
-            for (const comp of sideComps) {
-                if (!comp.subcategory) continue;
-                const subId = comp.subcategoryId;
-                subcatAggs[subId] ??= { sum: 0, count: 0 };
-                transactionsInPeriod.filter(t => t.subcategoryId === subId).forEach(tx => {
-                    if (subcatAggs[subId]) {
-                        subcatAggs[subId].sum += tx.amount;
-                        subcatAggs[subId].count++;
-                    }
-                });
-            }
-            for (const comp of sideComps) {
-                if (!comp.subcategory) continue;
-                const agg = subcatAggs[comp.subcategoryId]; let valToUse = 0;
-                if (agg) {
-                    if (comp.aggregationType === AggregationType.SUM) valToUse = agg.sum;
-                    else if (comp.aggregationType === AggregationType.AVG) valToUse = (agg.count > 0) ? (agg.sum / agg.count) : 0;
+            const sideComps = populatedResult.ratio.ratioComponents.filter(rc => rc.side === side);
+
+            const aggregatedFlowValuesInPeriod: Record<string, { sum: number, count: number }> = {};
+            for (const tx of transactionsInPeriod) { // Use transactionsInPeriod (already fetched)
+                if (tx.subcategory?.category?.accountType?.name === "Pemasukan" ||
+                    tx.subcategory?.category?.accountType?.name === "Pengeluaran") {
+                    const subId = tx.subcategoryId;
+                    aggregatedFlowValuesInPeriod[subId] ??= { sum: 0, count: 0 };
+                    aggregatedFlowValuesInPeriod[subId].sum += tx.amount;
+                    aggregatedFlowValuesInPeriod[subId].count++;
                 }
-                totalSideVal += valToUse * comp.sign;
+            }
+            const getSubcategoryBalanceForBreakdown = async (subcategoryId: string): Promise<number> => {
+                const txs = await prisma.transaction.findMany({
+                    where: { userId, subcategoryId, date: { lte: populatedResult.endDate }, deletedAt: null },
+                    select: { amount: true }
+                });
+                return txs.reduce((acc, curr) => acc + curr.amount, 0);
+            };
+
+            for (const component of sideComps) {
+                const accountTypeName = component.subcategory.category.accountType.name;
+                let valToUse = 0;
+                if (accountTypeName === "Aset" || accountTypeName === "Liabilitas") {
+                    valToUse = await getSubcategoryBalanceForBreakdown(component.subcategoryId);
+                } else if (accountTypeName === "Pemasukan" || accountTypeName === "Pengeluaran") {
+                    const aggData = aggregatedFlowValuesInPeriod[component.subcategoryId];
+                    if (aggData) {
+                        if (component.aggregationType === AggregationType.SUM) valToUse = aggData.sum;
+                        else if (component.aggregationType === AggregationType.AVG) valToUse = (aggData.count > 0) ? (aggData.sum / aggData.count) : 0;
+                    }
+                }
+                totalSideVal += valToUse * component.sign;
             }
             return totalSideVal;
         };
-        calcNum = processSideForBreakdown(Side.numerator);
-        calcDen = processSideForBreakdown(Side.denominator);
+        calcNum = await processSideForBreakdown(Side.numerator);
+        calcDen = await processSideForBreakdown(Side.denominator);
 
-        // Cast to the DTO, ensure all fields are mapped correctly
         const detailDto: EvaluationResultDetailDto = {
-            id: fullResultFromDb.id,
-            userId: fullResultFromDb.userId,
-            // user: fullResultFromDb.user, // Include if your DTO and client needs it
-            startDate: fullResultFromDb.startDate,
-            endDate: fullResultFromDb.endDate,
-            ratioId: fullResultFromDb.ratioId,
-            ratio: fullResultFromDb.ratio as unknown as EvaluationResultDetailDto['ratio'], // Cast needed for nested types
-            value: fullResultFromDb.value,
-            status: fullResultFromDb.status,
-            calculatedAt: fullResultFromDb.calculatedAt,
-            createdAt: fullResultFromDb.createdAt,
-            updatedAt: fullResultFromDb.updatedAt,
-            deletedAt: fullResultFromDb.deletedAt,
+            id: populatedResult.id,
+            userId: populatedResult.userId,
+            startDate: populatedResult.startDate,
+            endDate: populatedResult.endDate,
+            ratioId: populatedResult.ratioId,
+            ratio: populatedResult.ratio, // This is already PopulatedRatioWithAccountTypedComponents
+            value: populatedResult.value,
+            status: populatedResult.status,
+            calculatedAt: populatedResult.calculatedAt,
+            createdAt: populatedResult.createdAt,
+            updatedAt: populatedResult.updatedAt,
+            deletedAt: populatedResult.deletedAt,
             breakdownComponents: breakdownComponentsDto.length > 0 ? breakdownComponentsDto : [],
             calculatedNumerator: calcNum,
             calculatedDenominator: calcDen,
