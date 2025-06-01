@@ -5,7 +5,7 @@ import { inject, injectable } from 'inversify';
 import { TYPES } from '../utils/types';
 import { authenticate } from '../middlewares/authMiddleware';
 import { validateZod } from '../middlewares/validationMiddleware';
-import { getIncomeSummaryForDatesSchema, saveExpenseAllocationsSchema } from '../validators/budgetValidator';
+import { /*getIncomeSummaryForDatesSchema,*/ saveExpenseAllocationsSchema } from '../validators/budgetValidator';
 // Import DTOs for specific BudgetAllocation CRUD if you create Zod schemas for them
 // import { createBudgetAllocationSchema, updateBudgetAllocationSchema } from '../validators/budgetValidator';
 import { AuthRequest } from '../types/auth'; // Corrected import

@@ -1,5 +1,5 @@
 // src/services/transactionBudgetingService.ts
-import { CategoryOccupation, ExpenseAllocation, BudgetPlan as PrismaBudgetPlan, Prisma } from '@prisma/client';
+import { CategoryOccupation, /*ExpenseAllocation,*/ BudgetPlan as PrismaBudgetPlan, Prisma } from '@prisma/client';
 import {
     TransactionBudgetingRepository,
     // CreateExpenseAllocationDto is now more specific to adding to an existing plan
@@ -11,7 +11,7 @@ import {
     CreateBudgetPlanDto
 } from '../repositories/transactionBudgetingRepository';
 import { UserService } from './userService';
-import { TransactionService, PopulatedTransaction } from './transactionService';
+import { TransactionService, /*PopulatedTransaction*/ } from './transactionService';
 import { TYPES } from '../utils/types';
 import { inject, injectable } from 'inversify';
 import prisma from '../config/database';
@@ -39,7 +39,7 @@ export interface ExpenseCategorySuggestion {
 }
 
 export interface SaveExpenseAllocationsClientDto {
-    planDescription: string| null;
+    planDescription: string | null;
     planStartDate: Date;
     planEndDate: Date;
     incomeCalculationStartDate: Date;
@@ -228,12 +228,6 @@ export class TransactionBudgetingService {
             }
             const newPercentage = Number(budgetPlan.totalCalculatedIncome) === 0 ? 0 : (Number(dto.amount) / Number(budgetPlan.totalCalculatedIncome)) * 100;
             finalDto.percentage = new Decimal(newPercentage.toFixed(2)); // Store percentage with precision
-        } else if (dto.percentage !== undefined && dto.amount !== undefined) {
-            // If both are provided, ensure they are consistent or decide which one takes precedence.
-            // For now, let's assume they should be consistent or client sends one.
-            // Or, recalculate amount based on percentage if both are sent to ensure consistency:
-            const newAmount = (Number(dto.percentage) / 100) * Number(budgetPlan.totalCalculatedIncome);
-            finalDto.amount = new Decimal(newAmount.toFixed(2));
         }
 
         return this.budgetingRepository.updateExpenseAllocation(allocationId, finalDto);

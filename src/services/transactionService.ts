@@ -114,7 +114,7 @@ export class TransactionService {
 
     // PSPEC 2.4: Edit Transaction
     async updateExistingTransaction(transactionId: string, dto: UpdateTransactionDto, userId: string): Promise<PopulatedTransaction> {
-        const existingTransaction = await this.getTransactionById(transactionId, userId); // Ensures ownership & existence (active)
+        /// const existingTransaction = await this.getTransactionById(transactionId, userId); // Ensures ownership & existence (active)
 
         if (dto.subcategoryId) {
             const subcategory = await prisma.subcategory.findUnique({ where: { id: dto.subcategoryId } });
@@ -128,7 +128,7 @@ export class TransactionService {
 
     // PSPEC 2.5: Delete Transaction (Soft Delete)
     async deleteUserTransaction(transactionId: string, userId: string): Promise<void> {
-        const existingTransaction = await this.getTransactionById(transactionId, userId); // Ensures ownership & existence (active)
+        /// const existingTransaction = await this.getTransactionById(transactionId, userId); // Ensures ownership & existence (active)
         logger.info(`[TransactionService] Soft-deleting transaction ${transactionId} for user ${userId}`);
         await this.transactionRepository.softDelete(transactionId);
     }

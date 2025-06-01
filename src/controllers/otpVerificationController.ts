@@ -3,8 +3,8 @@ import { Request, Response, NextFunction } from 'express'; // Added NextFunction
 import { OtpVerificationService } from '../services/otpVerificationService';
 import { TYPES } from '../utils/types';
 import { inject, injectable } from 'inversify';
-import { validateZod } from '../middlewares/validationMiddleware'; // Assuming you'll use this
-import { requestOtpSchema, verifyOtpSchema } from '../validators/otpValidator'; // Create these Zod schemas
+/// import { validateZod } from '../middlewares/validationMiddleware'; // Assuming you'll use this
+/// import { requestOtpSchema, verifyOtpSchema } from '../validators/otpValidator'; // Create these Zod schemas
 
 @injectable()
 export class OtpVerificationController {

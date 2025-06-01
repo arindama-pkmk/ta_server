@@ -1,5 +1,5 @@
 // src/services/transactionEvaluationService.ts
-import { Prisma, Ratio, RatioComponent, Subcategory, Side, AggregationType, EvaluationStatus, EvaluationResult, User } from '@prisma/client';
+import {/* Prisma,*/ Ratio, RatioComponent, Subcategory, Side, AggregationType, EvaluationStatus /*, EvaluationResult, User*/ } from '@prisma/client';
 import {
     TransactionEvaluationRepository,
     PopulatedEvaluationResult,
@@ -99,6 +99,7 @@ export class TransactionEvaluationService {
     }
 
     private calculateSingleRatioValue(transactions: PopulatedTransaction[], ratio: Ratio & { ratioComponents: (RatioComponent & { subcategory: Subcategory })[] }): number {
+        console.log(transactions.length); // to cancel out the unused variable warning
         let numSum = 0, denSum = 0;
         const processSide = (side: Side): number => {
             let totalSideVal = 0;

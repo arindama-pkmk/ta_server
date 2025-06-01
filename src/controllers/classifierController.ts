@@ -1,16 +1,16 @@
 // src/controllers/classifierController.ts
 import { Request, Response, NextFunction } from 'express'; // Added NextFunction
 import { inject, injectable } from 'inversify';
-import { ClassifierService, ClassifiedTransactionDetails } from '../services/classifierService';
+import { ClassifierService } from '../services/classifierService';
 import { TYPES } from '../utils/types';
 import { loadEnvironmentVariable } from '../utils/environmentVariableHandler'; // For confidence threshold display logic
-import { validateZod } from '../middlewares/validationMiddleware'; // For validation
-import { z } from 'zod'; // For Zod schema
+// import { validateZod } from '../middlewares/validationMiddleware'; // For validation
+// import { z } from 'zod'; // For Zod schema
 
 // Zod Schema for request validation
-const classifySchema = z.object({
-    text: z.string().min(1, "Transaction description text is required."),
-});
+// const classifySchema = z.object({
+//     text: z.string().min(1, "Transaction description text is required."),
+// });
 
 @injectable()
 export class ClassifierController {

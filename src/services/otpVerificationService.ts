@@ -1,10 +1,10 @@
 // src/services/otpVerificationService.ts
-import { OtpVerification } from '@prisma/client'; // Prisma model
+/// import { OtpVerification } from '@prisma/client'; // Prisma model
 import { OtpVerificationRepository } from '../repositories/otpVerificationRepository';
 import { TYPES } from '../utils/types';
 import { inject, injectable } from 'inversify';
 import { sendEmail } from '../utils/emailHandler'; // Assuming this utility is well-defined
-import { getEmailContent } from '../utils/emailTemplateLoader'; // For email content
+// import { getEmailContent } from '../utils/emailTemplateLoader'; // For email content
 import { loadEnvironmentVariable } from '../utils/environmentVariableHandler';
 import { BadRequestError } from '../utils/errorHandler'; // Using custom error
 import prisma from '../config/database'; // For prisma.$transaction
