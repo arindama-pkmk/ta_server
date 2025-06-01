@@ -341,7 +341,7 @@ export class TransactionEvaluationService {
     }
 
     private getIdealRangeDisplay(ratio: Ratio): string | null {
-        if (ratio.code === "LIQUIDITY_RATIO") return "Ideal: 3-6 Bulan";
+        if (ratio.code === "LIQUIDITY_RATIO") return "3-6 Bulan";
         const lower = ratio.lowerBound;
         const upper = ratio.upperBound;
         const lowerInc = ratio.isLowerBoundInclusive ?? true;
@@ -358,9 +358,9 @@ export class TransactionEvaluationService {
         }
 
         if (rangeParts.length > 0) {
-            return `Ideal: ${rangeParts.join(' dan ')}`;
+            return `${rangeParts.join(' dan ')}`;
         }
-        if (ratio.title.toLowerCase().includes("solvabilitas")) return "Ideal: > 0%";
+        if (ratio.title.toLowerCase().includes("solvabilitas")) return "> 0%";
         return ratio.idealText ?? "Rentang ideal tidak ditentukan";
     }
 
