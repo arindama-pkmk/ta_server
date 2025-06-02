@@ -99,7 +99,17 @@ export class TransactionEvaluationService {
 
     private determineEvaluationStatus(value: number, ratio: Ratio): EvaluationStatus {
         if (isNaN(value) || !isFinite(value)) return EvaluationStatus.INCOMPLETE;
-        const { lowerBound, upperBound, isLowerBoundInclusive, isUpperBoundInclusive } = ratio;
+        const { lowerBound, upperBound, isLowerBoundInclusive, isUpperBoundInclusive, code } = ratio;
+
+        if (code === "LIQUIDITY_RATIO") {
+            // Liquidity: Ideal if value >= lowerBound (e.g., >= 3)
+            return (lowerBound !== null && value >= lowerBound) ? EvaluationStatus.IDEAL : EvaluationStatus.NOT_IDEAL;
+        }
+        if (code === "SOLVENCY_RATIO") {
+            // Solvency: Ideal if > 0. (seed has lowerBound: 0.00001, isLowerBoundInclusive: false)
+            return (lowerBound !== null && value > lowerBound) ? EvaluationStatus.IDEAL : EvaluationStatus.NOT_IDEAL;
+        }
+
         let meetsLower = true, meetsUpper = true;
         if (lowerBound !== null) meetsLower = (isLowerBoundInclusive ?? true) ? value >= lowerBound : value > lowerBound;
         if (upperBound !== null) meetsUpper = (isUpperBoundInclusive ?? true) ? value <= upperBound : value < upperBound;
@@ -341,27 +351,37 @@ export class TransactionEvaluationService {
     }
 
     private getIdealRangeDisplay(ratio: Ratio): string | null {
-        if (ratio.code === "LIQUIDITY_RATIO") return "3-6 Bulan";
-        const lower = ratio.lowerBound;
-        const upper = ratio.upperBound;
-        const lowerInc = ratio.isLowerBoundInclusive ?? true;
-        const upperInc = ratio.isUpperBoundInclusive ?? true;
-        const mult = ratio.multiplier ?? 1;
-        const unit = mult === 100 ? "%" : "";
-
-        let rangeParts: string[] = [];
-        if (lower != null) {
-            rangeParts.push(`${lowerInc ? '>=' : '>'} ${lower}${unit}`);
-        }
-        if (upper != null) {
-            rangeParts.push(`${upperInc ? '<=' : '<'} ${upper}${unit}`);
+        // Primarily use the idealText from the Ratio model (set by seed)
+        if (ratio.idealText && ratio.idealText !== "Rentang ideal tidak ditentukan" && ratio.idealText !== "N/A") {
+            return ratio.idealText;
         }
 
-        if (rangeParts.length > 0) {
-            return `${rangeParts.join(' dan ')}`;
+        // Fallback construction if idealText is missing or generic (should be rare after seed update)
+        const { code, lowerBound, upperBound, multiplier } = ratio;
+        let unit: string;
+        if ((multiplier ?? 1) === 100) {
+            unit = "%";
+        } else if (code === "LIQUIDITY_RATIO") {
+            unit = " Bulan";
+        } else {
+            unit = "";
         }
-        if (ratio.title.toLowerCase().includes("solvabilitas")) return "> 0%";
-        return ratio.idealText ?? "Rentang ideal tidak ditentukan";
+        const formatBound = (val: number | null) => val != null ? val.toFixed(0) : '';
+
+        if (code === "LIQUIDITY_RATIO") return `≥ ${formatBound(lowerBound)}${unit}`;
+        if (code === "SOLVENCY_RATIO") return "-";
+
+        if (lowerBound !== null && upperBound !== null) {
+            return `${formatBound(lowerBound)}${unit} - ${formatBound(upperBound)}${unit}`;
+        }
+        if (lowerBound !== null) {
+            return `≥ ${formatBound(lowerBound)}${unit}`;
+        }
+        if (upperBound !== null) {
+            return `≤ ${formatBound(upperBound)}${unit}`;
+        }
+
+        return "Rentang ideal tidak ditentukan";
     }
 
     async getEvaluationHistoryForUser(userId: string, queryStartDate?: Date, queryEndDate?: Date): Promise<RepoPopulatedEvaluationResult[]> {

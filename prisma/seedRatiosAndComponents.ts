@@ -27,6 +27,8 @@ type RatioDefinition = {
   multiplier?: number;
   lowerBound?: number;
   upperBound?: number;
+  isLowerBoundInclusive?: boolean; // Optional, default is true
+  isUpperBoundInclusive?: boolean; // Optional, default is true
   // Components structure:
   // 'conceptual_sum_name': [{ subcategoryName: string, sign: 1 | -1 }, ...]
   // Then formula structure:
@@ -48,7 +50,6 @@ const ratioData: RatioDefinition[] = [
     title: "Rasio Likuiditas", // Matches table II.1
     multiplier: 1, // Unit is months
     lowerBound: 3,
-    upperBound: 6,
     components: [
       // Numerator: Aset Likuid (s.liquid)
       ...subcategoryDefinitions.liquidCats.map(sc => ({ subcategoryName: sc, side: Side.numerator, sign: 1, aggregationType: AggregationType.SUM } as const)),
@@ -133,7 +134,8 @@ const ratioData: RatioDefinition[] = [
     // If ideal is > 0, then lowerBound: 0 (exclusive).
     // Or if we interpret it as "not bankrupt", then the ratio should be positive.
     // Let's assume "not bankrupt" means Solvency Ratio > 0%
-    lowerBound: 0.00001, // A very small positive number to represent >0
+    lowerBound: 0, // A very small positive number to represent >0
+    isLowerBoundInclusive: false, // Not bankrupt means net worth > 0
     components: [
       // Numerator: Total Kekayaan Bersih (s.netWorth)
       ...subcategoryDefinitions.liquidCats.map(sc => ({ subcategoryName: sc, side: Side.numerator, sign: 1, aggregationType: AggregationType.SUM } as const)),

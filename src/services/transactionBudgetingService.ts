@@ -244,10 +244,10 @@ export class TransactionBudgetingService {
             throw new BadRequestError("Start date and end date for income summary are required.");
         }
         if (endDate < startDate) throw new BadRequestError("Income summary end date cannot be before start date.");
-        const diffDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 3600 * 24));
-        if (diffDays > 35) { // Example validation, adjust as needed
-            throw new BadRequestError("Income summary date range too large (max ~35 days).");
-        }
+        /// const diffDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 3600 * 24));
+        /// if (diffDays > 35) { // Example validation, adjust as needed
+        ///     throw new BadRequestError("Income summary date range too large (max ~35 days).");
+        /// }
 
         const transactions = await this.transactionService.getAllUserTransactions(userId, {
             startDate: startDate.toISOString(),
