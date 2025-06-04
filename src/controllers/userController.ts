@@ -68,16 +68,16 @@ export class UserController {
         }
     }
 
-    async resetPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
-        try {
-            // Assumes Zod validation (resetPasswordSchema) applied by middleware
-            const { email, otp, newPassword } = req.body;
-            await this.userService.resetPasswordWithOtp(email, otp, newPassword);
-            res.status(200).json({ success: true, message: "Password has been reset successfully." });
-        } catch (error) {
-            next(error);
-        }
-    }
+    // async resetPassword(req: Request, res: Response, next: NextFunction): Promise<void> {
+    //     try {
+    //         // Assumes Zod validation (resetPasswordSchema) applied by middleware
+    //         const { email, otp, newPassword } = req.body;
+    //         await this.userService.resetPasswordWithOtp(email, otp, newPassword);
+    //         res.status(200).json({ success: true, message: "Password has been reset successfully." });
+    //     } catch (error) {
+    //         next(error);
+    //     }
+    // }
 
     async deleteCurrentUserAccount(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
         try {

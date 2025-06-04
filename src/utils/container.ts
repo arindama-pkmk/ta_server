@@ -13,9 +13,6 @@ import { TransactionController } from '../controllers/transactionController';
 import { TransactionRoutes } from '../routes/transactionRoutes';
 import { ClassifierController } from '../controllers/classifierController';
 import { ClassifierService } from '../services/classifierService';
-import { OtpVerificationRepository } from '../repositories/otpVerificationRepository';
-import { OtpVerificationService } from '../services/otpVerificationService';
-import { OtpVerificationController } from '../controllers/otpVerificationController';
 import { TransactionEvaluationRepository } from '../repositories/transactionEvaluationRepository';
 import { TransactionEvaluationService } from '../services/transactionEvaluationService';
 import { TransactionEvaluationController } from '../controllers/transactionEvaluationController';
@@ -53,10 +50,6 @@ container.bind<TransactionBudgetingRepository>(TYPES.TransactionBudgetingReposit
 container.bind<TransactionBudgetingService>(TYPES.TransactionBudgetingService).to(TransactionBudgetingService);
 container.bind<TransactionBudgetingController>(TYPES.TransactionBudgetingController).to(TransactionBudgetingController);
 container.bind<TransactionBudgetingRoutes>(TYPES.TransactionBudgetingRoutes).to(TransactionBudgetingRoutes);
-
-container.bind<OtpVerificationRepository>(TYPES.OtpVerificationRepository).to(OtpVerificationRepository);
-container.bind<OtpVerificationService>(TYPES.OtpVerificationService).to(OtpVerificationService);
-container.bind<OtpVerificationController>(TYPES.OtpVerificationController).to(OtpVerificationController);
 
 container.bind<ClassifierController>(TYPES.ClassifierController).to(ClassifierController);
 container.bind<ClassifierService>(TYPES.ClassifierService).to(ClassifierService);

@@ -1,5 +1,5 @@
 // src/services/transactionEvaluationService.ts
-import { Ratio, RatioComponent, Subcategory, Side, AggregationType, EvaluationStatus, EvaluationResult, Category, AccountType, User } from '@prisma/client';
+import { Ratio, RatioComponent, Subcategory, Side, EvaluationStatus, EvaluationResult, Category, AccountType, User } from '@prisma/client';
 import {
     TransactionEvaluationRepository,
     CreateEvaluationResultDto,
@@ -174,11 +174,7 @@ export class TransactionEvaluationService {
                 } else if (accountTypeName === "Pemasukan" || accountTypeName === "Pengeluaran") {
                     const aggData = aggregatedFlowValuesInPeriod[component.subcategoryId];
                     if (aggData) {
-                        if (component.aggregationType === AggregationType.SUM) {
-                            valToUse = aggData.sum;
-                        } else if (component.aggregationType === AggregationType.AVG) {
-                            valToUse = (aggData.count > 0) ? (aggData.sum / aggData.count) : 0;
-                        }
+                        valToUse = aggData.sum;
                     }
                 }
                 totalSideVal += valToUse * component.sign;
@@ -505,8 +501,7 @@ export class TransactionEvaluationService {
                 } else if (accountTypeName === "Pemasukan" || accountTypeName === "Pengeluaran") {
                     const aggData = aggregatedFlowValuesInPeriod[component.subcategoryId];
                     if (aggData) {
-                        if (component.aggregationType === AggregationType.SUM) valToUse = aggData.sum;
-                        else if (component.aggregationType === AggregationType.AVG) valToUse = (aggData.count > 0) ? (aggData.sum / aggData.count) : 0;
+                        valToUse = aggData.sum;
                     }
                 }
                 totalSideVal += valToUse * component.sign;

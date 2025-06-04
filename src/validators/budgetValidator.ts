@@ -11,7 +11,6 @@ const singleAllocationDetailSchema = z.object({
 
 export const saveExpenseAllocationsSchema = z.object({
     // Fields for BudgetPlan
-    planDescription: z.string().optional(), // User's name for the budget plan
     planStartDate: z.preprocess((arg) => {
         if (typeof arg === "string" || arg instanceof Date) return new Date(arg);
         throw new Error("Invalid planStartDate format");

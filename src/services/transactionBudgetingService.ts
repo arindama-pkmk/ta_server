@@ -39,7 +39,6 @@ export interface ExpenseCategorySuggestion {
 }
 
 export interface SaveExpenseAllocationsClientDto {
-    planDescription: string | null;
     planStartDate: Date;
     planEndDate: Date;
     incomeCalculationStartDate: Date;
@@ -93,12 +92,11 @@ export class TransactionBudgetingService {
                 userId,
                 planStartDate: dto.planStartDate,
                 planEndDate: dto.planEndDate,
-                description: dto.description, // null or specific description
                 deletedAt: null,
             }
         });
         if (existingPlan) {
-            throw new BadRequestError(`A budget plan with the same description and dates already exists (ID: ${existingPlan.id}).`);
+            throw new BadRequestError(`A budget plan with the same dates already exists (ID: ${existingPlan.id}).`);
         }
 
         return this.budgetingRepository.createBudgetPlan(dto, userId);
@@ -142,9 +140,8 @@ export class TransactionBudgetingService {
                 throw new BadRequestError("Income calculation end date cannot be before start date.");
             }
         }
-        // Check for duplicates if description/dates are changing
-        if (dto.description !== undefined || dto.planStartDate || dto.planEndDate) {
-            const checkDesc = dto.description === undefined ? plan.description : dto.description;
+        // Check for duplicates if dates are changing
+        if (dto.planStartDate || dto.planEndDate) {
             const checkStart = dto.planStartDate || plan.planStartDate;
             const checkEnd = dto.planEndDate || plan.planEndDate;
             const existingPlan = await prisma.budgetPlan.findFirst({
@@ -152,13 +149,12 @@ export class TransactionBudgetingService {
                     userId,
                     planStartDate: checkStart,
                     planEndDate: checkEnd,
-                    description: checkDesc,
                     deletedAt: null,
                     id: { not: budgetPlanId } // Exclude the current plan itself
                 }
             });
             if (existingPlan) {
-                throw new BadRequestError(`Another budget plan with the same description and dates already exists (ID: ${existingPlan.id}).`);
+                throw new BadRequestError(`Another budget plan with the same dates already exists (ID: ${existingPlan.id}).`);
             }
         }
 
@@ -319,7 +315,6 @@ export class TransactionBudgetingService {
 
         return prisma.$transaction(async (tx) => {
             const budgetPlanData: CreateBudgetPlanDto = {
-                description: dto.planDescription,
                 planStartDate: dto.planStartDate,
                 planEndDate: dto.planEndDate,
                 incomeCalculationStartDate: dto.incomeCalculationStartDate,
@@ -332,7 +327,6 @@ export class TransactionBudgetingService {
                     userId,
                     planStartDate: dto.planStartDate,
                     planEndDate: dto.planEndDate,
-                    description: dto.planDescription,
                     deletedAt: null,
                 }
             });
@@ -346,7 +340,6 @@ export class TransactionBudgetingService {
                         incomeCalculationStartDate: dto.incomeCalculationStartDate,
                         incomeCalculationEndDate: dto.incomeCalculationEndDate,
                         totalCalculatedIncome: new Decimal(dto.totalCalculatedIncome.toString()),
-                        // description: dto.planDescription, // Allow description update
                     },
                 });
                 // Soft delete old allocations for this plan before adding new ones

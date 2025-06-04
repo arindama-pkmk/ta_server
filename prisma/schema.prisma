@@ -22,7 +22,6 @@ model User {
   deletedAt     DateTime?
 
   transactions        Transaction[]
-  otpVerifications    OtpVerification[]
   budgetPlans         BudgetPlan[]
   evaluationResults   EvaluationResult[]
 }
@@ -101,21 +100,6 @@ model Transaction {
   @@index([date])
 }
 
-model OtpVerification {
-  id        String    @id @default(uuid()) @db.Uuid
-  email     String
-  otp       String
-  expiresAt DateTime
-  userId    String?   @db.Uuid
-  user      User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
-
-  @@index([email])
-  @@index([userId])
-}
-
 model CategoryOccupation {
   id           String     @id @default(uuid()) @db.Uuid
   occupationId String     @db.Uuid
@@ -137,7 +121,6 @@ model BudgetPlan {
   id                         String    @id @default(uuid()) @db.Uuid
   userId                     String    @db.Uuid
   user                       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  description                String?
   planStartDate              DateTime
   planEndDate                DateTime
   incomeCalculationStartDate DateTime
@@ -150,7 +133,7 @@ model BudgetPlan {
 
   allocations ExpenseAllocation[]
 
-  @@unique([userId, planStartDate, planEndDate, description], name: "uniq_user_budget_plan_dates_desc")
+  @@unique([userId, planStartDate, planEndDate], name: "uniq_user_budget_plan_dates")
   @@index([userId])
   @@index([userId, planStartDate, planEndDate])
 }
@@ -205,7 +188,6 @@ model RatioComponent {
   subcategory     Subcategory     @relation(fields: [subcategoryId], references: [id])
   side            Side
   sign            Int
-  aggregationType AggregationType
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -241,11 +223,6 @@ model EvaluationResult {
 enum Side {
   numerator
   denominator
-}
-
-enum AggregationType {
-  SUM
-  AVG
 }
 
 enum EvaluationStatus {

@@ -1,5 +1,5 @@
 // prisma/seedRatiosAndComponents.ts
-import { PrismaClient, Side, AggregationType } from "@prisma/client";
+import { PrismaClient, Side } from "@prisma/client";
 const prisma = new PrismaClient();
 
 // Definitions from your Flutter code
@@ -40,7 +40,6 @@ type RatioDefinition = {
     subcategoryName: string;
     side: Side;
     sign: 1 | -1;
-    aggregationType: AggregationType; // Mostly SUM
   }>;
 };
 
@@ -52,9 +51,9 @@ const ratioData: RatioDefinition[] = [
     lowerBound: 3,
     components: [
       // Numerator: Aset Likuid (s.liquid)
-      ...subcategoryDefinitions.liquidCats.map(sc => ({ subcategoryName: sc, side: Side.numerator, sign: 1, aggregationType: AggregationType.SUM } as const)),
+      ...subcategoryDefinitions.liquidCats.map(sc => ({ subcategoryName: sc, side: Side.numerator, sign: 1 } as const)),
       // Denominator: Pengeluaran bulanan (s.expense)
-      ...subcategoryDefinitions.expenseCats.map(sc => ({ subcategoryName: sc, side: Side.denominator, sign: 1, aggregationType: AggregationType.SUM } as const)),
+      ...subcategoryDefinitions.expenseCats.map(sc => ({ subcategoryName: sc, side: Side.denominator, sign: 1 } as const)),
     ],
   },
   { // 1: Current Assets / Net Worth (%)
@@ -64,11 +63,11 @@ const ratioData: RatioDefinition[] = [
     lowerBound: 15,
     components: [
       // Numerator: Aset Likuid (s.liquid)
-      ...subcategoryDefinitions.liquidCats.map(sc => ({ subcategoryName: sc, side: Side.numerator, sign: 1, aggregationType: AggregationType.SUM } as const)),
+      ...subcategoryDefinitions.liquidCats.map(sc => ({ subcategoryName: sc, side: Side.numerator, sign: 1 } as const)),
       // Denominator: Total Kekayaan Bersih (s.netWorth = (s.liquid + s.nonLiquid) - s.liabilities)
-      ...subcategoryDefinitions.liquidCats.map(sc => ({ subcategoryName: sc, side: Side.denominator, sign: 1, aggregationType: AggregationType.SUM } as const)),
-      ...subcategoryDefinitions.nonLiquidCats.map(sc => ({ subcategoryName: sc, side: Side.denominator, sign: 1, aggregationType: AggregationType.SUM } as const)),
-      ...subcategoryDefinitions.liabilitiesCats.map(sc => ({ subcategoryName: sc, side: Side.denominator, sign: -1, aggregationType: AggregationType.SUM } as const)),
+      ...subcategoryDefinitions.liquidCats.map(sc => ({ subcategoryName: sc, side: Side.denominator, sign: 1 } as const)),
+      ...subcategoryDefinitions.nonLiquidCats.map(sc => ({ subcategoryName: sc, side: Side.denominator, sign: 1 } as const)),
+      ...subcategoryDefinitions.liabilitiesCats.map(sc => ({ subcategoryName: sc, side: Side.denominator, sign: -1 } as const)),
     ],
   },
   { // 2: Debt-to-Asset (%)
@@ -78,10 +77,10 @@ const ratioData: RatioDefinition[] = [
     upperBound: 50,
     components: [
       // Numerator: Total Utang (s.liabilities)
-      ...subcategoryDefinitions.liabilitiesCats.map(sc => ({ subcategoryName: sc, side: Side.numerator, sign: 1, aggregationType: AggregationType.SUM } as const)),
+      ...subcategoryDefinitions.liabilitiesCats.map(sc => ({ subcategoryName: sc, side: Side.numerator, sign: 1 } as const)),
       // Denominator: Total Aset (s.totalAssets = s.liquid + s.nonLiquid)
-      ...subcategoryDefinitions.liquidCats.map(sc => ({ subcategoryName: sc, side: Side.denominator, sign: 1, aggregationType: AggregationType.SUM } as const)),
-      ...subcategoryDefinitions.nonLiquidCats.map(sc => ({ subcategoryName: sc, side: Side.denominator, sign: 1, aggregationType: AggregationType.SUM } as const)),
+      ...subcategoryDefinitions.liquidCats.map(sc => ({ subcategoryName: sc, side: Side.denominator, sign: 1 } as const)),
+      ...subcategoryDefinitions.nonLiquidCats.map(sc => ({ subcategoryName: sc, side: Side.denominator, sign: 1 } as const)),
     ],
   },
   { // 3: Saving Ratio (%)
@@ -91,9 +90,9 @@ const ratioData: RatioDefinition[] = [
     lowerBound: 10,
     components: [
       // Numerator: Total Tabungan (s.savings)
-      ...subcategoryDefinitions.savingsCats.map(sc => ({ subcategoryName: sc, side: Side.numerator, sign: 1, aggregationType: AggregationType.SUM } as const)),
+      ...subcategoryDefinitions.savingsCats.map(sc => ({ subcategoryName: sc, side: Side.numerator, sign: 1 } as const)),
       // Denominator: Penghasilan Kotor (s.income)
-      ...subcategoryDefinitions.incomeCats.map(sc => ({ subcategoryName: sc, side: Side.denominator, sign: 1, aggregationType: AggregationType.SUM } as const)),
+      ...subcategoryDefinitions.incomeCats.map(sc => ({ subcategoryName: sc, side: Side.denominator, sign: 1 } as const)),
     ],
   },
   { // 4: Debt Service Ratio (%)
@@ -103,10 +102,10 @@ const ratioData: RatioDefinition[] = [
     upperBound: 45,
     components: [
       // Numerator: Total Pembayaran Utang (s.debtPayments)
-      ...subcategoryDefinitions.debtPaymentsCats.map(sc => ({ subcategoryName: sc, side: Side.numerator, sign: 1, aggregationType: AggregationType.SUM } as const)),
+      ...subcategoryDefinitions.debtPaymentsCats.map(sc => ({ subcategoryName: sc, side: Side.numerator, sign: 1 } as const)),
       // Denominator: Penghasilan Bersih (s.netIncome = s.income - s.deductions)
-      ...subcategoryDefinitions.incomeCats.map(sc => ({ subcategoryName: sc, side: Side.denominator, sign: 1, aggregationType: AggregationType.SUM } as const)),
-      ...subcategoryDefinitions.deductionsCats.map(sc => ({ subcategoryName: sc, side: Side.denominator, sign: -1, aggregationType: AggregationType.SUM } as const)),
+      ...subcategoryDefinitions.incomeCats.map(sc => ({ subcategoryName: sc, side: Side.denominator, sign: 1 } as const)),
+      ...subcategoryDefinitions.deductionsCats.map(sc => ({ subcategoryName: sc, side: Side.denominator, sign: -1 } as const)),
     ],
   },
   { // 5: Net investment asset to net worth ratio (%)
@@ -116,11 +115,11 @@ const ratioData: RatioDefinition[] = [
     lowerBound: 50,
     components: [
       // Numerator: Total Aset Diinvestasikan (s.invested)
-      ...subcategoryDefinitions.investedCats.map(sc => ({ subcategoryName: sc, side: Side.numerator, sign: 1, aggregationType: AggregationType.SUM } as const)),
+      ...subcategoryDefinitions.investedCats.map(sc => ({ subcategoryName: sc, side: Side.numerator, sign: 1 } as const)),
       // Denominator: Total Kekayaan Bersih (s.netWorth)
-      ...subcategoryDefinitions.liquidCats.map(sc => ({ subcategoryName: sc, side: Side.denominator, sign: 1, aggregationType: AggregationType.SUM } as const)),
-      ...subcategoryDefinitions.nonLiquidCats.map(sc => ({ subcategoryName: sc, side: Side.denominator, sign: 1, aggregationType: AggregationType.SUM } as const)),
-      ...subcategoryDefinitions.liabilitiesCats.map(sc => ({ subcategoryName: sc, side: Side.denominator, sign: -1, aggregationType: AggregationType.SUM } as const)),
+      ...subcategoryDefinitions.liquidCats.map(sc => ({ subcategoryName: sc, side: Side.denominator, sign: 1 } as const)),
+      ...subcategoryDefinitions.nonLiquidCats.map(sc => ({ subcategoryName: sc, side: Side.denominator, sign: 1 } as const)),
+      ...subcategoryDefinitions.liabilitiesCats.map(sc => ({ subcategoryName: sc, side: Side.denominator, sign: -1 } as const)),
     ],
   },
   { // 6: Solvency Ratio (%)
@@ -138,12 +137,12 @@ const ratioData: RatioDefinition[] = [
     isLowerBoundInclusive: false, // Not bankrupt means net worth > 0
     components: [
       // Numerator: Total Kekayaan Bersih (s.netWorth)
-      ...subcategoryDefinitions.liquidCats.map(sc => ({ subcategoryName: sc, side: Side.numerator, sign: 1, aggregationType: AggregationType.SUM } as const)),
-      ...subcategoryDefinitions.nonLiquidCats.map(sc => ({ subcategoryName: sc, side: Side.numerator, sign: 1, aggregationType: AggregationType.SUM } as const)),
-      ...subcategoryDefinitions.liabilitiesCats.map(sc => ({ subcategoryName: sc, side: Side.numerator, sign: -1, aggregationType: AggregationType.SUM } as const)),
+      ...subcategoryDefinitions.liquidCats.map(sc => ({ subcategoryName: sc, side: Side.numerator, sign: 1 } as const)),
+      ...subcategoryDefinitions.nonLiquidCats.map(sc => ({ subcategoryName: sc, side: Side.numerator, sign: 1 } as const)),
+      ...subcategoryDefinitions.liabilitiesCats.map(sc => ({ subcategoryName: sc, side: Side.numerator, sign: -1 } as const)),
       // Denominator: Total Aset (s.totalAssets)
-      ...subcategoryDefinitions.liquidCats.map(sc => ({ subcategoryName: sc, side: Side.denominator, sign: 1, aggregationType: AggregationType.SUM } as const)),
-      ...subcategoryDefinitions.nonLiquidCats.map(sc => ({ subcategoryName: sc, side: Side.denominator, sign: 1, aggregationType: AggregationType.SUM } as const)),
+      ...subcategoryDefinitions.liquidCats.map(sc => ({ subcategoryName: sc, side: Side.denominator, sign: 1 } as const)),
+      ...subcategoryDefinitions.nonLiquidCats.map(sc => ({ subcategoryName: sc, side: Side.denominator, sign: 1 } as const)),
     ],
   },
 ];
@@ -210,14 +209,12 @@ async function main() {
         update: {
           side: compDef.side,
           sign: compDef.sign,
-          aggregationType: compDef.aggregationType,
         },
         create: {
           ratioId: ratio.id,
           subcategoryId: subcategoryId,
           side: compDef.side,
           sign: compDef.sign,
-          aggregationType: compDef.aggregationType,
         },
       });
       console.log(`  Upserted RatioComponent for ${compDef.subcategoryName} (Side: ${compDef.side}, Sign: ${compDef.sign})`);

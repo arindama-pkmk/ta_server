@@ -204,16 +204,11 @@ async function main() {
         }
         overallSeedingStats[user.id] = userStats;
 
-        const budgetPlanDescription = `Anggaran (${user.name}, ${planStartDate.toLocaleDateString()}-${planEndDate.toLocaleDateString()})`;
-        if (totalCalculatedIncomeForBudgetPlanPeriod <= 0 && userOccupationName !== "Pelajar/Mahasiswa") {
-            console.warn(`  User ${user.name} has ${totalCalculatedIncomeForBudgetPlanPeriod} income for budget plan.`);
-        }
-
         const seededBudgetPlan = await prisma.budgetPlan.upsert({
-            where: { uniq_user_budget_plan_dates_desc: { userId: user.id, planStartDate, planEndDate, description: budgetPlanDescription } },
+            where: { uniq_user_budget_plan_dates: { userId: user.id, planStartDate, planEndDate } },
             update: { totalCalculatedIncome: new Decimal(totalCalculatedIncomeForBudgetPlanPeriod.toFixed(2)) },
             create: {
-                userId: user.id, description: budgetPlanDescription, planStartDate, planEndDate,
+                userId: user.id, planStartDate, planEndDate,
                 incomeCalculationStartDate: planStartDate, incomeCalculationEndDate: planEndDate,
                 totalCalculatedIncome: new Decimal(totalCalculatedIncomeForBudgetPlanPeriod.toFixed(2)),
             },

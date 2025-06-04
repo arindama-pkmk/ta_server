@@ -8,10 +8,8 @@ import { HealthController } from '../controllers/healthController';
 import { loadEnvironmentVariable } from '../utils/environmentVariableHandler';
 import { authenticate } from '../middlewares/authMiddleware';
 import { ClassifierController } from '../controllers/classifierController';
-import { OtpVerificationController } from '../controllers/otpVerificationController';
 import { TransactionEvaluationRoutes } from './transactionEvaluationRoutes';
 import { validateZod } from '../middlewares/validationMiddleware';
-import { requestOtpSchema, verifyOtpSchema } from '../validators/otpValidator';
 import { classifyTransactionTextSchema } from '../validators/classifyValidator';
 import { TransactionBudgetingRoutes } from './transactionBudgetingRoutes';
 import { CategoryHierarchyRoutes } from './categoryHierarchyRoutes'; // Added import
@@ -25,7 +23,6 @@ export class Routes {
     private readonly categoryHierarchyRoutes: CategoryHierarchyRoutes; // Added property
     private readonly healthController: HealthController;
     private readonly classifierController: ClassifierController;
-    private readonly otpController: OtpVerificationController;
 
     constructor(
         @inject(TYPES.UserRoutes) userRoutes: UserRoutes,
@@ -35,7 +32,6 @@ export class Routes {
         @inject(TYPES.CategoryHierarchyRoutes) categoryHierarchyRoutes: CategoryHierarchyRoutes, // Added injection
         @inject(TYPES.HealthController) healthController: HealthController,
         @inject(TYPES.ClassifierController) classifierController: ClassifierController,
-        @inject(TYPES.OtpVerificationController) otpController: OtpVerificationController,
     ) {
         this.userRoutes = userRoutes;
         this.transactionRoutes = transactionRoutes;
@@ -44,83 +40,10 @@ export class Routes {
         this.categoryHierarchyRoutes = categoryHierarchyRoutes; // Added assignment
         this.healthController = healthController;
         this.classifierController = classifierController;
-        this.otpController = otpController;
     }
 
     register(app: Application) {
         const basePath = loadEnvironmentVariable('API_BASE_PATH') || '/api/v1';
-
-        /**
-         * @openapi
-         * /otp/request:
-         *   post:
-         *     tags:
-         *       - OTP
-         *     summary: Requests an OTP to be sent to the user's email
-         *     requestBody:
-         *       required: true
-         *       content:
-         *         application/json:
-         *           schema:
-         *             $ref: '#/components/schemas/RequestOtpPayload'
-         *     responses:
-         *       '200':
-         *         description: OTP sent successfully.
-         *         content:
-         *           application/json:
-         *             schema:
-         *               $ref: '#/components/schemas/SuccessMessageResponse'
-         *       '400':
-         *         description: Invalid input.
-         *         content:
-         *           application/json:
-         *             schema:
-         *               $ref: '#/components/schemas/ErrorValidationResponse'
-         *       '500':
-         *         description: Error sending email.
-         *         content:
-         *           application/json:
-         *             schema:
-         *               $ref: '#/components/schemas/ErrorResponse'
-         */
-        app.post(`${basePath}/otp/request`,
-            validateZod(requestOtpSchema),
-            (req: Request, res: Response, next: NextFunction) => this.otpController.requestOtp(req, res, next)
-        );
-
-        /**
-         * @openapi
-         * /otp/verify:
-         *   post:
-         *     tags:
-         *       - OTP
-         *     summary: Verifies an OTP provided by the user
-         *     requestBody:
-         *       required: true
-         *       content:
-         *         application/json:
-         *           schema:
-         *             $ref: '#/components/schemas/VerifyOtpPayload'
-         *     responses:
-         *       '200':
-         *         description: OTP verified successfully.
-         *         content:
-         *           application/json:
-         *             schema:
-         *               $ref: '#/components/schemas/SuccessMessageResponse'
-         *       '400':
-         *         description: Invalid or expired OTP, or validation failure.
-         *         content:
-         *           application/json:
-         *             schema:
-         *               oneOf:
-         *                 - $ref: '#/components/schemas/ErrorValidationResponse'
-         *                 - $ref: '#/components/schemas/ErrorResponse' # For "Invalid or expired OTP"
-         */
-        app.post(`${basePath}/otp/verify`,
-            validateZod(verifyOtpSchema),
-            (req: Request, res: Response, next: NextFunction) => this.otpController.verifyOtp(req, res, next)
-        );
 
         /**
          * @openapi

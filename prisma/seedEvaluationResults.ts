@@ -1,5 +1,5 @@
 // prisma/seedEvaluationResults.ts
-import { PrismaClient, Ratio, RatioComponent, Subcategory, Category, AccountType, Side, AggregationType, User, EvaluationStatus } from "@prisma/client"; // Added Category, AccountType
+import { PrismaClient, Ratio, RatioComponent, Subcategory, Category, AccountType, Side, User, EvaluationStatus } from "@prisma/client"; // Added Category, AccountType
 import { startOfMonth, endOfMonth as dateFnsEndOfMonth, subMonths } from 'date-fns'; // Corrected imports
 
 const prisma = new PrismaClient();
@@ -92,11 +92,7 @@ async function calculateRatioValueForSeed(
             } else if (accountTypeName === "Pemasukan" || accountTypeName === "Pengeluaran") {
                 const aggData = aggregatedFlowValuesInPeriod[component.subcategoryId];
                 if (aggData) {
-                    if (component.aggregationType === AggregationType.SUM) {
-                        valToUse = aggData.sum;
-                    } else if (component.aggregationType === AggregationType.AVG) {
-                        valToUse = (aggData.count > 0) ? (aggData.sum / aggData.count) : 0;
-                    }
+                    valToUse = aggData.sum;
                 }
             }
             totalSideVal += valToUse * component.sign;

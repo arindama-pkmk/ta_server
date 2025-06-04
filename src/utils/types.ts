@@ -21,10 +21,6 @@ export const TYPES = {
     TransactionEvaluationService: Symbol.for('TransactionEvaluationService'),
     TransactionEvaluationController: Symbol.for('TransactionEvaluationController'),
     TransactionEvaluationRoutes: Symbol.for('TransactionEvaluationRoutes'),
-    OtpVerificationRepository: Symbol.for('OtpVerificationRepository'),
-    OtpVerificationService: Symbol.for('OtpVerificationService'),
-    OtpVerificationController: Symbol.for('OtpVerificationController'),
-    OtpVerificationRoutes: Symbol.for('OtpVerificationRoutes'),
     PeriodRepository: Symbol.for('PeriodRepository'),
     PeriodService: Symbol.for('PeriodService'),
     PeriodController: Symbol.for('PeriodController'), // If you add a controller

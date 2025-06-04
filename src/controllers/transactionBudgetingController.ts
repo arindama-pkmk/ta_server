@@ -54,7 +54,7 @@ export class TransactionBudgetingController {
         }
     }
     // Add POST for creating a budget plan (if separate from saveExpenseAllocations)
-    // Add PUT for updating a budget plan description etc.
+    // Add PUT for updating a budget plan etc.
     // Add DELETE for a budget plan
 
     // === ExpenseAllocation CRUD (Now relative to a BudgetPlan) ===

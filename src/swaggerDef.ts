@@ -413,7 +413,6 @@ const swaggerDefinition = {
                 properties: {
                     id: { type: 'string', format: 'uuid' },
                     userId: { type: 'string', format: 'uuid' },
-                    description: { type: 'string', nullable: true },
                     planStartDate: { type: 'string', format: 'date-time' },
                     planEndDate: { type: 'string', format: 'date-time' },
                     incomeCalculationStartDate: { type: 'string', format: 'date-time' },

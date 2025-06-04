@@ -7,21 +7,17 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { loadEnvironmentVariable } from '../utils/environmentVariableHandler';
 import { BadRequestError, NotFoundError, UnauthorizedError, ForbiddenError } from '../utils/errorHandler';
-import { OtpVerificationService } from './otpVerificationService'; // For potential future use (e.g. email verification on update)
 import prisma from '../config/database'; // For $transaction
 import logger from '../utils/logger';
 
 @injectable()
 export class UserService {
     private readonly userRepository: UserRepository;
-    private readonly otpService: OtpVerificationService; // Injected for potential future use
 
     constructor(
         @inject(TYPES.UserRepository) userRepository: UserRepository,
-        @inject(TYPES.OtpVerificationService) otpService: OtpVerificationService
     ) {
         this.userRepository = userRepository;
-        this.otpService = otpService;
     }
 
     private async hashPassword(password: string): Promise<string> {
@@ -140,25 +136,25 @@ export class UserService {
     }
 
     // For password reset flow - Step 3
-    async resetPasswordWithOtp(email: string, otp: string, newPasswordPlainText: string): Promise<Omit<User, 'password'>> { // Return type fixed
-        await this.otpService.verifyOtp(email, otp);
+    // async resetPasswordWithOtp(email: string, otp: string, newPasswordPlainText: string): Promise<Omit<User, 'password'>> { // Return type fixed
+    //     await this.otpService.verifyOtp(email, otp);
 
-        const user = await this.userRepository.findByEmail(email);
-        if (!user || user.deletedAt) {
-            throw new NotFoundError("User with this email not found or is inactive.");
-        }
+    //     const user = await this.userRepository.findByEmail(email);
+    //     if (!user || user.deletedAt) {
+    //         throw new NotFoundError("User with this email not found or is inactive.");
+    //     }
 
-        if (!newPasswordPlainText || newPasswordPlainText.length < 6) {
-            throw new BadRequestError("New password must be at least 6 characters long.");
-        }
-        const newHashedPassword = await this.hashPassword(newPasswordPlainText);
+    //     if (!newPasswordPlainText || newPasswordPlainText.length < 6) {
+    //         throw new BadRequestError("New password must be at least 6 characters long.");
+    //     }
+    //     const newHashedPassword = await this.hashPassword(newPasswordPlainText);
 
-        // Call the new specific repository method
-        const updatedUser = await this.userRepository.updatePassword(user.id, newHashedPassword);
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { password, ...userWithoutPassword } = updatedUser;
-        return userWithoutPassword;
-    }
+    //     // Call the new specific repository method
+    //     const updatedUser = await this.userRepository.updatePassword(user.id, newHashedPassword);
+    //     // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    //     const { password, ...userWithoutPassword } = updatedUser;
+    //     return userWithoutPassword;
+    // }
 
     // Soft delete user and potentially related data (cascading logic)
     async deleteUser(userIdToDelete: string, currentUserId: string): Promise<void> {
@@ -211,11 +207,11 @@ export class UserService {
                 data: { deletedAt: new Date() }
             });
 
-            // 4. Soft delete OTPs linked to this user
-            await tx.otpVerification.updateMany({
-                where: { userId: userIdToDelete, deletedAt: null },
-                data: { deletedAt: new Date() }
-            });
+            // // 4. Soft delete OTPs linked to this user
+            // await tx.otpVerification.updateMany({
+            //     where: { userId: userIdToDelete, deletedAt: null },
+            //     data: { deletedAt: new Date() }
+            // });
 
             // 5. Finally, soft delete the user record itself
             await tx.user.update({
