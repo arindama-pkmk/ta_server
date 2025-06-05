@@ -11,7 +11,7 @@ import { authenticate } from '../middlewares/authMiddleware'; // Added for route
 @injectable()
 export class TransactionEvaluationRoutes {
     public router: Router;
-    private controller: TransactionEvaluationController;
+    private readonly controller: TransactionEvaluationController;
 
     constructor(@inject(TYPES.TransactionEvaluationController) controller: TransactionEvaluationController) {
         this.router = Router();
@@ -111,6 +111,42 @@ export class TransactionEvaluationRoutes {
          */
         this.router.get('/:evaluationResultId/detail',
             (req: Request, res: Response, next: NextFunction) => this.controller.getEvaluationDetail(req as AuthRequest, res, next)
+        );
+
+        /**
+        * @openapi
+        * /evaluations/check-existence:
+        *   get:
+        *     tags:
+        *       - Evaluations
+        *     summary: Check if evaluation results exist for a given date range
+        *     security:
+        *       - bearerAuth: []
+        *     parameters:
+        *       - in: query
+        *         name: startDate
+        *         required: true
+        *         schema: { type: string, format: date }
+        *       - in: query
+        *         name: endDate
+        *         required: true
+        *         schema: { type: string, format: date }
+        *     responses:
+        *       '200':
+        *         description: Indicates if results exist. If so, data contains the results.
+        *         content:
+        *           application/json:
+        *             schema:
+        *               type: object
+        *               properties:
+        *                 success: { type: boolean }
+        *                 exists: { type: boolean }
+        *                 data: { type: 'array', items: { $ref: '#/components/schemas/EvaluationResult' }, nullable: true }
+        *       '401': { description: "Unauthorized" }
+        *       '404': { description: "Evaluation result not found" }
+        */
+        this.router.get('/check-existence', // Or a more descriptive path
+            (req: Request, res: Response, next: NextFunction) => this.controller.checkExistingEvaluationForDateRange(req as AuthRequest, res, next)
         );
     }
 }

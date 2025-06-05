@@ -530,4 +530,10 @@ export class TransactionEvaluationService {
         };
         return detailDto;
     }
+
+    async findEvaluationsByDateRange(userId: string, startDate: Date, endDate: Date): Promise<RepoPopulatedEvaluationResult[]> {
+        return this.evaluationRepository.findAllByUserIdAndOptionalDateRange(userId, {
+            where: { startDate, endDate } // Exact match on start and end date
+        });
+    }
 }

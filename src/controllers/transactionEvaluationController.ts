@@ -63,4 +63,29 @@ export class TransactionEvaluationController {
             next(error);
         }
     }
+
+    async checkExistingEvaluationForDateRange(req: AuthRequest, res: Response, next: NextFunction): Promise<void> {
+        try {
+            if (!req.user?.id) throw new UnauthorizedError('Authentication required.');
+            const { startDate, endDate } = req.query; // Expect ISO date strings
+            if (!startDate || !endDate || typeof startDate !== 'string' || typeof endDate !== 'string') {
+                throw new BadRequestError("startDate and endDate query parameters are required.");
+            }
+
+            const existingResults = await this.evaluationService.findEvaluationsByDateRange(
+                req.user.id,
+                new Date(startDate),
+                new Date(endDate)
+            );
+
+            if (existingResults.length > 0) {
+                // Could return the first found result ID or just a boolean
+                res.status(200).json({ success: true, exists: true, data: existingResults }); // Send back the data for pre-filling
+            } else {
+                res.status(200).json({ success: true, exists: false });
+            }
+        } catch (error) {
+            next(error);
+        }
+    }
 }
