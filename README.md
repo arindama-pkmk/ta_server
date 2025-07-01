@@ -171,7 +171,7 @@ ta_server/
 │   ├── utils/              # Fungsi utilitas (logger, error handler)
 │   ├── validators/         # Skema validasi (Zod)
 │   └── app.ts              # Entry point aplikasi Express
-├── .env                    # File environment (JANGAN DI-COMMIT)
+├── .env                    # File environment (bukan bagian dari commit)
 └── package.json            # Daftar dependencies dan skrip
 ```
 
