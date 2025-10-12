@@ -1,7 +1,7 @@
 {
   "author": "",
   "dependencies": {
-    "@prisma/client": "^6.8.2",
+    "@prisma/client": "^6.16.2",
     "axios": "1.8.4",
     "bcryptjs": "3.0.2",
     "body-parser": "2.2.0",
